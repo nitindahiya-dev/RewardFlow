@@ -86,3 +86,12 @@ out
 tmp/
 temp/
 
+# Backend
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/prisma/migrations/
+*.log
+
+
+

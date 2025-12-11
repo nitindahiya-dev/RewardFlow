@@ -1,8 +1,10 @@
 // src/pages/Login.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, Container, PageContainer } from '../components/common';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { loginUser } from '../store/slices/authSlice';
 
 const LoginContainer = styled(PageContainer)`
   display: flex;
@@ -42,7 +44,16 @@ export const Login = () => {
     email: '',
     password: '',
   });
+  
+  const dispatch = useAppDispatch();
+  const { isLoading, error, isAuthenticated } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/tasks');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -51,12 +62,14 @@ export const Login = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Handle login with Redux
-    console.log('Login:', formData);
-    // Navigate to tasks page after login
-    navigate('/tasks');
+    
+    const result = await dispatch(loginUser(formData));
+    
+    if (loginUser.fulfilled.match(result)) {
+      navigate('/tasks');
+    }
   };
 
   return (
@@ -91,8 +104,15 @@ export const Login = () => {
                 required
               />
             </FormGroup>
-            <Button type="submit" fullWidth>
-              Login
+            {error && (
+              <FormGroup>
+                <span style={{ color: '#E74C3C', fontSize: '0.875rem' }}>
+                  {error}
+                </span>
+              </FormGroup>
+            )}
+            <Button type="submit" fullWidth disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
             <LinkText>
               Don't have an account? <Link to="/signup">Sign up</Link>
