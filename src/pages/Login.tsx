@@ -1,6 +1,6 @@
 // src/pages/Login.tsx
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, Container, PageContainer } from '../components/common';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -49,11 +49,14 @@ export const Login = () => {
   const { isLoading, error, isAuthenticated } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
 
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || '/tasks';
+
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/tasks');
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -68,7 +71,7 @@ export const Login = () => {
     const result = await dispatch(loginUser(formData));
     
     if (loginUser.fulfilled.match(result)) {
-      navigate('/tasks');
+      navigate(from, { replace: true });
     }
   };
 

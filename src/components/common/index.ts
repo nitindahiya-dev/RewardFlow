@@ -6,6 +6,7 @@ export { Container, PageContainer } from './Container';
 export { FormGroup, Label, ErrorMessage } from './FormGroup';
 export { Header, HeaderContent, Logo, Nav, NavLink, ProfileIconContainer } from './Header';
 export { ProfileIcon } from './ProfileIcon';
+export { ProtectedRoute } from './ProtectedRoute';
 
 
 
