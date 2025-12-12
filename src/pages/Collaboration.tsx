@@ -1,6 +1,6 @@
 // src/pages/Collaboration.tsx
 import styled from 'styled-components';
-import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter } from '../components/common';
+import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter, UsersIcon } from '../components/common';
 
 const PageWrapper = styled.div`
   display: flex;
@@ -21,6 +21,15 @@ const FeatureIcon = styled.div`
   font-size: 4rem;
   margin-bottom: ${({ theme }) => theme.spacing.md};
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  
+  svg {
+    width: 4rem;
+    height: 4rem;
+  }
 `;
 
 const FeatureTitle = styled.h1`
@@ -69,11 +78,6 @@ const FeatureItem = styled.li`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
-  
-  &::before {
-    content: '👥';
-    font-size: ${({ theme }) => theme.fontSize.xl};
-  }
 `;
 
 const Text = styled.p`
@@ -88,7 +92,7 @@ export const Collaboration = () => {
       <FeaturePageContainer>
         <FeatureCard>
         <CardHeader>
-          <FeatureIcon>👥</FeatureIcon>
+          <FeatureIcon><UsersIcon size={64} /></FeatureIcon>
           <FeatureTitle>Real-Time Collaboration</FeatureTitle>
           <FeatureDescription>
             Work together in real-time with live updates, comments, and collaborative editing.
@@ -98,12 +102,30 @@ export const Collaboration = () => {
         <CardBody>
           <SectionTitle>Collaboration Features</SectionTitle>
           <FeatureList>
-            <FeatureItem>Real-Time Updates - See changes instantly as team members work</FeatureItem>
-            <FeatureItem>Live Comments - Discuss tasks with threaded comments</FeatureItem>
-            <FeatureItem>Collaborative Editing - Multiple users can edit tasks simultaneously</FeatureItem>
-            <FeatureItem>Presence Indicators - See who's viewing or editing tasks</FeatureItem>
-            <FeatureItem>Activity Feed - Track all team activity in one place</FeatureItem>
-            <FeatureItem>Notifications - Get notified about mentions, assignments, and updates</FeatureItem>
+            <FeatureItem>
+              <UsersIcon size={20} color="currentColor" />
+              Real-Time Updates - See changes instantly as team members work
+            </FeatureItem>
+            <FeatureItem>
+              <UsersIcon size={20} color="currentColor" />
+              Live Comments - Discuss tasks with threaded comments
+            </FeatureItem>
+            <FeatureItem>
+              <UsersIcon size={20} color="currentColor" />
+              Collaborative Editing - Multiple users can edit tasks simultaneously
+            </FeatureItem>
+            <FeatureItem>
+              <UsersIcon size={20} color="currentColor" />
+              Presence Indicators - See who's viewing or editing tasks
+            </FeatureItem>
+            <FeatureItem>
+              <UsersIcon size={20} color="currentColor" />
+              Activity Feed - Track all team activity in one place
+            </FeatureItem>
+            <FeatureItem>
+              <UsersIcon size={20} color="currentColor" />
+              Notifications - Get notified about mentions, assignments, and updates
+            </FeatureItem>
           </FeatureList>
 
           <SectionTitle>Team Management</SectionTitle>

@@ -15,6 +15,7 @@ import {
   FooterLinks,
   FooterBottomLink,
 } from './Footer';
+import { LightningIcon, ChatIcon } from './Icons';
 
 export const AppFooter = () => {
   return (
@@ -28,8 +29,8 @@ export const AppFooter = () => {
             </FooterText>
             <SocialLinks>
               <SocialLink href="#" aria-label="Twitter">𝕏</SocialLink>
-              <SocialLink href="#" aria-label="GitHub">⚡</SocialLink>
-              <SocialLink href="#" aria-label="Discord">💬</SocialLink>
+              <SocialLink href="#" aria-label="GitHub"><LightningIcon size={20} /></SocialLink>
+              <SocialLink href="#" aria-label="Discord"><ChatIcon size={20} /></SocialLink>
               <SocialLink href="#" aria-label="LinkedIn">in</SocialLink>
             </SocialLinks>
           </FooterColumn>

@@ -18,6 +18,14 @@ import {
   Copyright,
   FooterLinks,
   FooterBottomLink,
+  TaskIcon,
+  LinkIcon,
+  AIIcon,
+  UsersIcon,
+  CoinIcon,
+  ChartIcon,
+  LightningIcon,
+  ChatIcon,
 } from '../components/common';
 import { useAppSelector } from '../store/hooks';
 
@@ -220,6 +228,15 @@ const FeatureIcon = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.md};
   filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
   transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  
+  svg {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
   
   ${FeatureCard}:hover & {
     transform: scale(1.1) rotate(5deg);
@@ -531,7 +548,7 @@ export const Landing = () => {
       <LandingContainer>
         <FeaturesSection>
           <FeatureCard>
-            <FeatureIcon>📋</FeatureIcon>
+            <FeatureIcon><TaskIcon size={56} /></FeatureIcon>
             <FeatureTitle>Task Management</FeatureTitle>
             <FeatureDescription>
               Create, organize, and track your tasks with ease. Set priorities, due dates, and collaborate with your team.
@@ -539,7 +556,7 @@ export const Landing = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>🔗</FeatureIcon>
+            <FeatureIcon><LinkIcon size={56} /></FeatureIcon>
             <FeatureTitle>Web3 Integration</FeatureTitle>
             <FeatureDescription>
               Connect your crypto wallet, earn token rewards, and mint NFT badges for your achievements.
@@ -547,7 +564,7 @@ export const Landing = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>🤖</FeatureIcon>
+            <FeatureIcon><AIIcon size={56} /></FeatureIcon>
             <FeatureTitle>AI-Powered</FeatureTitle>
             <FeatureDescription>
               Get smart task suggestions, auto-categorization, and intelligent prioritization powered by AI.
@@ -555,7 +572,7 @@ export const Landing = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>👥</FeatureIcon>
+            <FeatureIcon><UsersIcon size={56} /></FeatureIcon>
             <FeatureTitle>Real-Time Collaboration</FeatureTitle>
             <FeatureDescription>
               Work together in real-time with live updates, comments, and collaborative editing.
@@ -563,7 +580,7 @@ export const Landing = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>💰</FeatureIcon>
+            <FeatureIcon><CoinIcon size={56} /></FeatureIcon>
             <FeatureTitle>Crypto Rewards</FeatureTitle>
             <FeatureDescription>
               Earn tokens and crypto rewards for completing tasks. Stake tokens and grow your earnings.
@@ -571,7 +588,7 @@ export const Landing = () => {
           </FeatureCard>
 
           <FeatureCard>
-            <FeatureIcon>📊</FeatureIcon>
+            <FeatureIcon><ChartIcon size={56} /></FeatureIcon>
             <FeatureTitle>Analytics & Insights</FeatureTitle>
             <FeatureDescription>
               Track your productivity, view detailed analytics, and get insights into your work patterns.
@@ -694,8 +711,8 @@ export const Landing = () => {
               </FooterText>
               <SocialLinks>
                 <SocialLink href="#" aria-label="Twitter">𝕏</SocialLink>
-                <SocialLink href="#" aria-label="GitHub">⚡</SocialLink>
-                <SocialLink href="#" aria-label="Discord">💬</SocialLink>
+                <SocialLink href="#" aria-label="GitHub"><LightningIcon size={20} /></SocialLink>
+                <SocialLink href="#" aria-label="Discord"><ChatIcon size={20} /></SocialLink>
                 <SocialLink href="#" aria-label="LinkedIn">in</SocialLink>
               </SocialLinks>
             </FooterColumn>

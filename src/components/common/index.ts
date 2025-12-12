@@ -24,6 +24,17 @@ export {
   FooterBottomLink,
 } from './Footer';
 export { AppFooter } from './AppFooter';
-
-
+export {
+  TaskIcon,
+  LinkIcon,
+  AIIcon,
+  UsersIcon,
+  CoinIcon,
+  ChartIcon,
+  LightningIcon,
+  ChatIcon,
+  BookIcon,
+  EmailIcon,
+  BugIcon,
+} from './Icons';
 

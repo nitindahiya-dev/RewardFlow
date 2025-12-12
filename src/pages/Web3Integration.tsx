@@ -1,6 +1,6 @@
 // src/pages/Web3Integration.tsx
 import styled from 'styled-components';
-import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter } from '../components/common';
+import { PageContainer, Card, CardHeader, CardBody, AppFooter, LinkIcon } from '../components/common';
 
 const PageWrapper = styled.div`
   display: flex;
@@ -21,6 +21,15 @@ const FeatureIcon = styled.div`
   font-size: 4rem;
   margin-bottom: ${({ theme }) => theme.spacing.md};
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  
+  svg {
+    width: 4rem;
+    height: 4rem;
+  }
 `;
 
 const FeatureTitle = styled.h1`
@@ -90,7 +99,7 @@ export const Web3Integration = () => {
       <FeaturePageContainer>
         <FeatureCard>
           <CardHeader>
-            <FeatureIcon>🔗</FeatureIcon>
+            <FeatureIcon><LinkIcon size={64} /></FeatureIcon>
             <FeatureTitle>Web3 Integration</FeatureTitle>
             <FeatureDescription>
               Connect your crypto wallet, earn token rewards, and mint NFT badges for your achievements.

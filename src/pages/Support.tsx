@@ -1,6 +1,6 @@
 // src/pages/Support.tsx
 import styled from 'styled-components';
-import { PageContainer, Card, CardHeader, CardTitle, CardBody, Button, AppFooter } from '../components/common';
+import { PageContainer, Card, CardHeader, CardTitle, CardBody, Button, AppFooter, BookIcon, ChatIcon, EmailIcon, BugIcon } from '../components/common';
 import { Link } from 'react-router-dom';
 
 const PageWrapper = styled.div`
@@ -68,6 +68,13 @@ const OptionTitle = styled.h3`
   font-weight: ${({ theme }) => theme.fontWeight.bold};
   color: ${({ theme }) => theme.colors.text};
   margin-bottom: ${({ theme }) => theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+  
+  svg {
+    color: ${({ theme }) => theme.colors.primary};
+  }
 `;
 
 const OptionDescription = styled.p`
@@ -103,7 +110,10 @@ export const Support = () => {
           <SectionTitle>Get Help</SectionTitle>
           
           <SupportOption>
-            <OptionTitle>📚 Documentation</OptionTitle>
+            <OptionTitle>
+              <BookIcon size={24} />
+              Documentation
+            </OptionTitle>
             <OptionDescription>
               Browse our comprehensive documentation for guides, tutorials, and FAQs.
             </OptionDescription>
@@ -113,7 +123,10 @@ export const Support = () => {
           </SupportOption>
 
           <SupportOption>
-            <OptionTitle>💬 Community Forum</OptionTitle>
+            <OptionTitle>
+              <ChatIcon size={24} />
+              Community Forum
+            </OptionTitle>
             <OptionDescription>
               Join our community forum to ask questions, share tips, and connect with other users.
             </OptionDescription>
@@ -123,7 +136,10 @@ export const Support = () => {
           </SupportOption>
 
           <SupportOption>
-            <OptionTitle>📧 Email Support</OptionTitle>
+            <OptionTitle>
+              <EmailIcon size={24} />
+              Email Support
+            </OptionTitle>
             <OptionDescription>
               Contact our support team directly via email. We typically respond within 24 hours.
             </OptionDescription>
@@ -133,7 +149,10 @@ export const Support = () => {
           </SupportOption>
 
           <SupportOption>
-            <OptionTitle>🐛 Report a Bug</OptionTitle>
+            <OptionTitle>
+              <BugIcon size={24} />
+              Report a Bug
+            </OptionTitle>
             <OptionDescription>
               Found a bug? Let us know so we can fix it. Include as much detail as possible.
             </OptionDescription>

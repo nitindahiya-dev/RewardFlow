@@ -1,6 +1,6 @@
 // src/pages/AIPowered.tsx
 import styled from 'styled-components';
-import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter } from '../components/common';
+import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter, AIIcon } from '../components/common';
 
 const PageWrapper = styled.div`
   display: flex;
@@ -21,6 +21,15 @@ const FeatureIcon = styled.div`
   font-size: 4rem;
   margin-bottom: ${({ theme }) => theme.spacing.md};
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  
+  svg {
+    width: 4rem;
+    height: 4rem;
+  }
 `;
 
 const FeatureTitle = styled.h1`
@@ -69,11 +78,6 @@ const FeatureItem = styled.li`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
-  
-  &::before {
-    content: '🤖';
-    font-size: ${({ theme }) => theme.fontSize.xl};
-  }
 `;
 
 const Text = styled.p`
@@ -88,7 +92,7 @@ export const AIPowered = () => {
       <FeaturePageContainer>
         <FeatureCard>
           <CardHeader>
-            <FeatureIcon>🤖</FeatureIcon>
+            <FeatureIcon><AIIcon size={64} /></FeatureIcon>
             <FeatureTitle>AI-Powered Features</FeatureTitle>
             <FeatureDescription>
               Get smart task suggestions, auto-categorization, and intelligent prioritization
@@ -98,12 +102,30 @@ export const AIPowered = () => {
           <CardBody>
             <SectionTitle>AI Capabilities</SectionTitle>
             <FeatureList>
-              <FeatureItem>Smart Task Suggestions - AI analyzes your patterns and suggests relevant tasks</FeatureItem>
-              <FeatureItem>Auto-Categorization - Automatically organize tasks into categories</FeatureItem>
-              <FeatureItem>Intelligent Prioritization - AI helps prioritize tasks based on deadlines and importance</FeatureItem>
-              <FeatureItem>Natural Language Processing - Create tasks using natural language</FeatureItem>
-              <FeatureItem>Predictive Analytics - Forecast task completion times and identify bottlenecks</FeatureItem>
-              <FeatureItem>Personalized Recommendations - Get tailored suggestions based on your work style</FeatureItem>
+              <FeatureItem>
+                <AIIcon size={20} color="currentColor" />
+                Smart Task Suggestions - AI analyzes your patterns and suggests relevant tasks
+              </FeatureItem>
+              <FeatureItem>
+                <AIIcon size={20} color="currentColor" />
+                Auto-Categorization - Automatically organize tasks into categories
+              </FeatureItem>
+              <FeatureItem>
+                <AIIcon size={20} color="currentColor" />
+                Intelligent Prioritization - AI helps prioritize tasks based on deadlines and importance
+              </FeatureItem>
+              <FeatureItem>
+                <AIIcon size={20} color="currentColor" />
+                Natural Language Processing - Create tasks using natural language
+              </FeatureItem>
+              <FeatureItem>
+                <AIIcon size={20} color="currentColor" />
+                Predictive Analytics - Forecast task completion times and identify bottlenecks
+              </FeatureItem>
+              <FeatureItem>
+                <AIIcon size={20} color="currentColor" />
+                Personalized Recommendations - Get tailored suggestions based on your work style
+              </FeatureItem>
             </FeatureList>
 
             <SectionTitle>How It Works</SectionTitle>

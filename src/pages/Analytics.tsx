@@ -1,6 +1,6 @@
 // src/pages/Analytics.tsx
 import styled from 'styled-components';
-import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter } from '../components/common';
+import { PageContainer, Card, CardHeader, CardTitle, CardBody, AppFooter, ChartIcon } from '../components/common';
 
 const PageWrapper = styled.div`
   display: flex;
@@ -21,6 +21,15 @@ const FeatureIcon = styled.div`
   font-size: 4rem;
   margin-bottom: ${({ theme }) => theme.spacing.md};
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.primary};
+  
+  svg {
+    width: 4rem;
+    height: 4rem;
+  }
 `;
 
 const FeatureTitle = styled.h1`
@@ -69,11 +78,6 @@ const FeatureItem = styled.li`
   display: flex;
   align-items: center;
   gap: ${({ theme }) => theme.spacing.md};
-  
-  &::before {
-    content: '📊';
-    font-size: ${({ theme }) => theme.fontSize.xl};
-  }
 `;
 
 const Text = styled.p`
@@ -88,7 +92,7 @@ export const Analytics = () => {
       <FeaturePageContainer>
         <FeatureCard>
           <CardHeader>
-            <FeatureIcon>📊</FeatureIcon>
+            <FeatureIcon><ChartIcon size={64} /></FeatureIcon>
             <FeatureTitle>Analytics & Insights</FeatureTitle>
             <FeatureDescription>
               Track your productivity, view detailed analytics, and get insights into your work patterns.
@@ -98,12 +102,30 @@ export const Analytics = () => {
           <CardBody>
             <SectionTitle>Analytics Features</SectionTitle>
             <FeatureList>
-              <FeatureItem>Task Completion Rates - Track how many tasks you complete over time</FeatureItem>
-              <FeatureItem>Time Tracking - See how long tasks take and identify time sinks</FeatureItem>
-              <FeatureItem>Productivity Trends - Visualize your productivity patterns</FeatureItem>
-              <FeatureItem>Team Performance - Monitor team metrics and collaboration stats</FeatureItem>
-              <FeatureItem>Custom Reports - Generate detailed reports on your work</FeatureItem>
-              <FeatureItem>Goal Tracking - Set and track productivity goals</FeatureItem>
+              <FeatureItem>
+                <ChartIcon size={20} color="currentColor" />
+                Task Completion Rates - Track how many tasks you complete over time
+              </FeatureItem>
+              <FeatureItem>
+                <ChartIcon size={20} color="currentColor" />
+                Time Tracking - See how long tasks take and identify time sinks
+              </FeatureItem>
+              <FeatureItem>
+                <ChartIcon size={20} color="currentColor" />
+                Productivity Trends - Visualize your productivity patterns
+              </FeatureItem>
+              <FeatureItem>
+                <ChartIcon size={20} color="currentColor" />
+                Team Performance - Monitor team metrics and collaboration stats
+              </FeatureItem>
+              <FeatureItem>
+                <ChartIcon size={20} color="currentColor" />
+                Custom Reports - Generate detailed reports on your work
+              </FeatureItem>
+              <FeatureItem>
+                <ChartIcon size={20} color="currentColor" />
+                Goal Tracking - Set and track productivity goals
+              </FeatureItem>
             </FeatureList>
 
             <SectionTitle>Insights & Recommendations</SectionTitle>
