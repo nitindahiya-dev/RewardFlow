@@ -14,12 +14,31 @@ interface AuthState {
   error: string | null;
 }
 
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
-  error: null,
+// Load initial state from localStorage
+const loadAuthState = (): AuthState => {
+  try {
+    const storedAuth = localStorage.getItem('auth');
+    if (storedAuth) {
+      const parsed = JSON.parse(storedAuth);
+      return {
+        user: parsed.user,
+        isAuthenticated: parsed.isAuthenticated || false,
+        isLoading: false,
+        error: null,
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load auth state from localStorage:', error);
+  }
+  return {
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    error: null,
+  };
 };
+
+const initialState: AuthState = loadAuthState();
 
 // Async thunk for login
 export const loginUser = createAsyncThunk(
@@ -52,6 +71,13 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      state.error = null;
+      // Clear localStorage
+      try {
+        localStorage.removeItem('auth');
+      } catch (error) {
+        console.error('Failed to clear auth from localStorage:', error);
+      }
     },
   },
   extraReducers: (builder) => {
@@ -64,10 +90,26 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
+        state.error = null;
+        // Save to localStorage
+        try {
+          localStorage.setItem('auth', JSON.stringify({
+            user: action.payload,
+            isAuthenticated: true,
+          }));
+        } catch (error) {
+          console.error('Failed to save auth to localStorage:', error);
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        // Clear localStorage on error
+        try {
+          localStorage.removeItem('auth');
+        } catch (error) {
+          console.error('Failed to clear auth from localStorage:', error);
+        }
       });
   },
 });

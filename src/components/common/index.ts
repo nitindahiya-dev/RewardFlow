@@ -37,4 +37,5 @@ export {
   EmailIcon,
   BugIcon,
 } from './Icons';
+export { ToastProvider, useToast } from './Toast';
 

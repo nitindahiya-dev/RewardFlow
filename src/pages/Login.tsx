@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, Container, PageContainer } from '../components/common';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loginUser } from '../store/slices/authSlice';
+import { useToast } from '../components/common/Toast';
 
 const LoginContainer = styled(PageContainer)`
   display: flex;
@@ -48,6 +49,7 @@ export const Login = () => {
   const dispatch = useAppDispatch();
   const { isLoading, error, isAuthenticated } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || '/tasks';
@@ -71,6 +73,7 @@ export const Login = () => {
     const result = await dispatch(loginUser(formData));
     
     if (loginUser.fulfilled.match(result)) {
+      showToast('Login successful! Welcome back.', 'success');
       navigate(from, { replace: true });
     }
   };

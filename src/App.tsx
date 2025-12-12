@@ -1,8 +1,8 @@
 // src/App.tsx
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { theme } from './theme/theme';
-import { Header, HeaderContent, Logo, Nav, NavLink, ProfileIconContainer, ProfileIcon, ProtectedRoute } from './components/common';
+import { Header, HeaderContent, Logo, Nav, NavLink, ProfileIconContainer, ProfileIcon, ProtectedRoute, Button } from './components/common';
 import {
   Landing,
   Login,
@@ -26,7 +26,9 @@ import {
 import styled from 'styled-components';
 import { Provider } from 'react-redux';
 import { store } from './store';
-import { useAppSelector } from './store/hooks';
+import { useAppSelector, useAppDispatch } from './store/hooks';
+import { logout } from './store/slices/authSlice';
+import { useToast, ToastProvider } from './components/common/Toast';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -54,8 +56,23 @@ const AppContent = styled.div`
   z-index: 1;
 `;
 
+const LogoutButton = styled(Button)`
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  font-size: ${({ theme }) => theme.fontSize.sm};
+  margin-left: ${({ theme }) => theme.spacing.sm};
+`;
+
 const AppHeader = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    showToast('Logged out successfully', 'info');
+    navigate('/');
+  };
 
   return (
     <Header>
@@ -70,6 +87,9 @@ const AppHeader = () => {
                 <NavLink to="/user-details">User Details</NavLink>
               </Nav>
               <ProfileIcon to="/profile" title="View Profile" />
+              <LogoutButton variant="outline" onClick={handleLogout}>
+                Logout
+              </LogoutButton>
             </>
           ) : (
             <Nav>
@@ -137,14 +157,16 @@ function App() {
   return (
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <Router>
-          <AppContainer>
-            <AppHeader />
-            <AppContent>
-              <AppRoutes />
-            </AppContent>
-          </AppContainer>
-        </Router>
+        <ToastProvider>
+          <Router>
+            <AppContainer>
+              <AppHeader />
+              <AppContent>
+                <AppRoutes />
+              </AppContent>
+            </AppContainer>
+          </Router>
+        </ToastProvider>
       </ThemeProvider>
     </Provider>
   );
