@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, Container, PageContainer, ConnectWallet } from '../components/common';
+import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, Container, PageContainer, ConnectWallet, MFAVerification } from '../components/common';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { loginUser } from '../store/slices/authSlice';
+import { loginUser, verifyMFA, resetMFAState } from '../store/slices/authSlice';
 import { useToast } from '../components/common/Toast';
 
 const LoginContainer = styled(PageContainer)`
@@ -68,7 +68,7 @@ export const Login = () => {
   });
   
   const dispatch = useAppDispatch();
-  const { isLoading, error, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, mfaRequired, mfaUserId, mfaError } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -94,10 +94,49 @@ export const Login = () => {
     const result = await dispatch(loginUser(formData));
     
     if (loginUser.fulfilled.match(result)) {
+      // Check if MFA is required
+      if (result.payload.mfaRequired) {
+        // MFA verification screen will be shown
+        return;
+      }
+      
+      // Normal login success
       showToast('Login successful! Welcome back.', 'success');
       navigate(from, { replace: true });
     }
   };
+
+  const handleMFAVerify = async (code: string) => {
+    if (!mfaUserId) return;
+    
+    const result = await dispatch(verifyMFA({ userId: mfaUserId, code }));
+    
+    if (verifyMFA.fulfilled.match(result)) {
+      showToast('MFA verification successful! Welcome back.', 'success');
+      navigate(from, { replace: true });
+    }
+  };
+
+  const handleMFACancel = () => {
+    dispatch(resetMFAState());
+  };
+
+  // Show MFA verification screen if MFA is required
+  if (mfaRequired && mfaUserId) {
+    return (
+      <LoginContainer>
+        <MFAVerification
+          userId={mfaUserId}
+          onVerify={handleMFAVerify}
+          onCancel={handleMFACancel}
+          isLoading={isLoading}
+          error={mfaError}
+          title="Two-Factor Authentication"
+          instructions="Enter the 6-digit code from your authenticator app"
+        />
+      </LoginContainer>
+    );
+  }
 
   return (
     <LoginContainer>

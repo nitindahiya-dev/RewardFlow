@@ -3,6 +3,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
+import speakeasy from 'speakeasy';
+import * as QRCode from 'qrcode';
 import prisma from './config/database';
 import { verifySignature, generateNonce } from './utils/web3';
 import { generateToken } from './utils/jwt';
@@ -120,9 +122,38 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Return user data (without password)
+    // Check if MFA is enabled
+    if (user.mfaEnabled && user.mfaSecret) {
+      // Check if account is locked
+      if (user.mfaLockedUntil && user.mfaLockedUntil > new Date()) {
+        const minutesLeft = Math.ceil((user.mfaLockedUntil.getTime() - Date.now()) / 60000);
+        return res.status(423).json({ 
+          error: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minute(s).`,
+          mfaRequired: false,
+        });
+      }
+
+      // Return MFA required status (don't generate token yet)
+      return res.status(200).json({
+        message: 'MFA verification required',
+        mfaRequired: true,
+        userId: user.id,
+        tempToken: null, // No token until MFA is verified
+      });
+    }
+
+    // Generate JWT token for non-MFA users
+    const token = generateToken({
+      userId: user.id,
+      email: user.email || undefined,
+      walletAddress: user.walletAddress || undefined,
+    });
+
+    // Return user data with token
     res.status(200).json({
       message: 'Login successful',
+      mfaRequired: false,
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -165,6 +196,224 @@ app.post('/api/auth/web3-nonce', async (req, res) => {
     res.status(200).json({ nonce });
   } catch (error: any) {
     console.error('Nonce generation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// MFA Setup - Generate secret and QR code
+app.post('/api/auth/mfa/setup', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Generate secret
+    const secret = speakeasy.generateSecret({
+      name: `TaskManager (${user.email || user.name})`,
+      issuer: 'TaskManager',
+      length: 32,
+    });
+
+    // Generate QR code
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '');
+
+    // Store secret temporarily (user needs to verify before enabling)
+    // In production, you might want to store this in a temporary session
+    // For now, we'll return it and require verification before saving
+
+    res.status(200).json({
+      secret: secret.base32,
+      qrCode: qrCodeUrl,
+      manualEntryKey: secret.base32,
+    });
+  } catch (error: any) {
+    console.error('MFA setup error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// MFA Verify - Verify code and enable MFA
+app.post('/api/auth/mfa/verify', async (req, res) => {
+  try {
+    const { userId, code, secret, action } = req.body; // action: 'setup' or 'login'
+
+    if (!userId || !code) {
+      return res.status(400).json({ error: 'User ID and code are required' });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if account is locked
+    if (user.mfaLockedUntil && user.mfaLockedUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.mfaLockedUntil.getTime() - Date.now()) / 60000);
+      return res.status(423).json({ 
+        error: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minute(s).`,
+      });
+    }
+
+    // Determine which secret to use
+    const secretToVerify = action === 'setup' ? secret : user.mfaSecret;
+
+    if (!secretToVerify) {
+      return res.status(400).json({ error: 'MFA secret not found' });
+    }
+
+    // Verify TOTP code
+    const verified = speakeasy.totp.verify({
+      secret: secretToVerify,
+      encoding: 'base32',
+      token: code,
+      window: 2, // Allow 2 time steps (60 seconds) of tolerance
+    });
+
+    if (!verified) {
+      // Increment failed attempts
+      const newAttempts = (user.mfaAttempts || 0) + 1;
+      const maxAttempts = 5;
+      const lockDuration = 15 * 60 * 1000; // 15 minutes
+
+      let updateData: any = {
+        mfaAttempts: newAttempts,
+      };
+
+      // Lock account after max attempts
+      if (newAttempts >= maxAttempts) {
+        updateData.mfaLockedUntil = new Date(Date.now() + lockDuration);
+        updateData.mfaAttempts = 0; // Reset attempts after lock
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+
+      const attemptsLeft = maxAttempts - newAttempts;
+      if (attemptsLeft > 0) {
+        return res.status(401).json({ 
+          error: `Invalid code. ${attemptsLeft} attempt(s) remaining.`,
+        });
+      } else {
+        return res.status(423).json({ 
+          error: 'Too many failed attempts. Account locked for 15 minutes.',
+        });
+      }
+    }
+
+    // Code is valid
+    if (action === 'setup') {
+      // Enable MFA and save secret
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          mfaEnabled: true,
+          mfaSecret: secret,
+          mfaAttempts: 0,
+          mfaLockedUntil: null,
+        },
+      });
+
+      res.status(200).json({
+        message: 'MFA enabled successfully',
+        enabled: true,
+      });
+    } else {
+      // Login verification - reset attempts and generate token
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          mfaAttempts: 0,
+          mfaLockedUntil: null,
+        },
+      });
+
+      // Generate JWT token
+      const token = generateToken({
+        userId: user.id,
+        email: user.email || undefined,
+        walletAddress: user.walletAddress || undefined,
+      });
+
+      res.status(200).json({
+        message: 'MFA verification successful',
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+      });
+    }
+  } catch (error: any) {
+    console.error('MFA verify error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// MFA Disable
+app.post('/api/auth/mfa/disable', async (req, res) => {
+  try {
+    const { userId, code } = req.body;
+
+    if (!userId || !code) {
+      return res.status(400).json({ error: 'User ID and code are required' });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.mfaSecret) {
+      return res.status(404).json({ error: 'MFA not enabled for this user' });
+    }
+
+    // Verify code before disabling
+    const verified = speakeasy.totp.verify({
+      secret: user.mfaSecret,
+      encoding: 'base32',
+      token: code,
+      window: 2,
+    });
+
+    if (!verified) {
+      return res.status(401).json({ error: 'Invalid code' });
+    }
+
+    // Disable MFA
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        mfaEnabled: false,
+        mfaSecret: null,
+        mfaAttempts: 0,
+        mfaLockedUntil: null,
+      },
+    });
+
+    res.status(200).json({
+      message: 'MFA disabled successfully',
+      enabled: false,
+    });
+  } catch (error: any) {
+    console.error('MFA disable error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

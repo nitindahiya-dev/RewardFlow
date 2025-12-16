@@ -13,6 +13,10 @@ model User {
   password     String?
   walletAddress String? @unique
   bio          String?
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String?
+  mfaAttempts  Int      @default(0)
+  mfaLockedUntil DateTime?
   createdAt    DateTime @default(now())
   tasks        Task[]
 }

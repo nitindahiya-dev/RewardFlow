@@ -15,6 +15,9 @@ interface AuthState {
   error: string | null;
   walletAddress: string | null;
   token: string | null;
+  mfaRequired: boolean;
+  mfaUserId: string | null;
+  mfaError: string | null;
 }
 
 // Load initial state from localStorage
@@ -42,6 +45,9 @@ const loadAuthState = (): AuthState => {
     error: null,
     walletAddress: null,
     token: null,
+    mfaRequired: false,
+    mfaUserId: null,
+    mfaError: null,
   };
 };
 
@@ -64,9 +70,53 @@ export const loginUser = createAsyncThunk(
       }
       
       const data = await response.json();
-      return { user: data.user, token: data.token || null };
+      
+      // Check if MFA is required
+      if (data.mfaRequired) {
+        return { 
+          mfaRequired: true, 
+          userId: data.userId,
+          user: null as any, 
+          token: null 
+        };
+      }
+      
+      return { 
+        user: data.user, 
+        token: data.token || null,
+        mfaRequired: false,
+        userId: null,
+      };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Login failed');
+    }
+  }
+);
+
+// Async thunk for MFA verification
+export const verifyMFA = createAsyncThunk(
+  'auth/verifyMFA',
+  async (payload: { userId: string; code: string }, { rejectWithValue }) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: payload.userId,
+          code: payload.code,
+          action: 'login',
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'MFA verification failed');
+      }
+      
+      const data = await response.json();
+      return { user: data.user, token: data.token || null };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'MFA verification failed');
     }
   }
 );
@@ -90,6 +140,9 @@ const authSlice = createSlice({
       state.error = null;
       state.walletAddress = null;
       state.token = null;
+      state.mfaRequired = false;
+      state.mfaUserId = null;
+      state.mfaError = null;
       // Clear localStorage
       try {
         localStorage.removeItem('auth');
@@ -97,6 +150,14 @@ const authSlice = createSlice({
       } catch (error) {
         console.error('Failed to clear auth from localStorage:', error);
       }
+    },
+    clearMFAError: (state) => {
+      state.mfaError = null;
+    },
+    resetMFAState: (state) => {
+      state.mfaRequired = false;
+      state.mfaUserId = null;
+      state.mfaError = null;
     },
   },
   extraReducers: (builder) => {
@@ -107,10 +168,23 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.error = null;
+        
+        // Check if MFA is required
+        if (action.payload.mfaRequired) {
+          state.mfaRequired = true;
+          state.mfaUserId = action.payload.userId;
+          state.isAuthenticated = false;
+          return;
+        }
+        
+        // Normal login success
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
-        state.error = null;
+        state.mfaRequired = false;
+        state.mfaUserId = null;
+        
         // Save to localStorage
         try {
           localStorage.setItem('auth', JSON.stringify({
@@ -172,9 +246,41 @@ const authSlice = createSlice({
         } catch (error) {
           console.error('Failed to clear auth from localStorage:', error);
         }
+      })
+      .addCase(verifyMFA.pending, (state) => {
+        state.isLoading = true;
+        state.mfaError = null;
+      })
+      .addCase(verifyMFA.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.mfaRequired = false;
+        state.mfaUserId = null;
+        state.mfaError = null;
+        state.error = null;
+        
+        // Save to localStorage
+        try {
+          localStorage.setItem('auth', JSON.stringify({
+            user: action.payload.user,
+            isAuthenticated: true,
+            token: action.payload.token,
+          }));
+          if (action.payload.token) {
+            localStorage.setItem('token', action.payload.token);
+          }
+        } catch (error) {
+          console.error('Failed to save auth to localStorage:', error);
+        }
+      })
+      .addCase(verifyMFA.rejected, (state, action) => {
+        state.isLoading = false;
+        state.mfaError = action.payload as string;
       });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearMFAError, resetMFAState } = authSlice.actions;
 export default authSlice.reducer;

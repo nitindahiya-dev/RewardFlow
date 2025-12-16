@@ -1,7 +1,9 @@
 // src/pages/Profile.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, PageContainer } from '../components/common';
+import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, PageContainer, MFAVerification } from '../components/common';
+import { useAppSelector } from '../store/hooks';
+import { useToast } from '../components/common/Toast';
 
 const ProfileContainer = styled(PageContainer)`
   max-width: 600px;
@@ -58,6 +60,32 @@ const ButtonGroup = styled.div`
   margin-top: ${({ theme }) => theme.spacing.md};
 `;
 
+const QRCodeImage = styled.img`
+  max-width: 200px;
+  margin: ${({ theme }) => theme.spacing.md} auto;
+  display: block;
+`;
+
+const SecretKey = styled.div`
+  background: ${({ theme }) => theme.colors.backgroundSecondary || '#f5f5f5'};
+  padding: ${({ theme }) => theme.spacing.md};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-family: monospace;
+  text-align: center;
+  word-break: break-all;
+  margin: ${({ theme }) => theme.spacing.md} 0;
+`;
+
+const StatusBadge = styled.span<{ enabled: boolean }>`
+  display: inline-block;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  border-radius: ${({ theme }) => theme.borderRadius.full};
+  font-size: ${({ theme }) => theme.fontSize.sm};
+  font-weight: ${({ theme }) => theme.fontWeight.semibold};
+  background: ${({ enabled, theme }) => enabled ? '#10B981' : '#EF4444'};
+  color: white;
+`;
+
 export const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -65,6 +93,130 @@ export const Profile = () => {
     email: 'john.doe@example.com',
     bio: 'Software developer passionate about building great applications.',
   });
+  
+  const { user, token } = useAppSelector((state) => state.auth);
+  const { showToast } = useToast();
+  
+  // MFA state
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaSetupMode, setMfaSetupMode] = useState(false);
+  const [mfaQRCode, setMfaQRCode] = useState<string | null>(null);
+  const [mfaSecret, setMfaSecret] = useState<string | null>(null);
+  const [mfaVerifying, setMfaVerifying] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch user MFA status
+    if (user?.id) {
+      fetchMFAStatus();
+    }
+  }, [user]);
+
+  const fetchMFAStatus = async () => {
+    // This would typically come from user profile API
+    // For now, we'll check it when setting up
+  };
+
+  const handleMFASetup = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/mfa/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to setup MFA');
+      }
+
+      const data = await response.json();
+      setMfaQRCode(data.qrCode);
+      setMfaSecret(data.secret);
+      setMfaSetupMode(true);
+      setMfaError(null);
+    } catch (error: any) {
+      setMfaError(error.message);
+      showToast(error.message, 'error');
+    }
+  };
+
+  const handleMFAVerify = async (code: string) => {
+    if (!user?.id || !mfaSecret) return;
+    
+    setMfaVerifying(true);
+    setMfaError(null);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          code,
+          secret: mfaSecret,
+          action: 'setup',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'MFA verification failed');
+      }
+
+      setMfaEnabled(true);
+      setMfaSetupMode(false);
+      setMfaQRCode(null);
+      setMfaSecret(null);
+      showToast('MFA enabled successfully!', 'success');
+    } catch (error: any) {
+      setMfaError(error.message);
+      showToast(error.message, 'error');
+    } finally {
+      setMfaVerifying(false);
+    }
+  };
+
+  const handleMFADisable = async () => {
+    if (!user?.id) return;
+    
+    // For disabling, we need to verify the code first
+    // This would typically show a verification modal
+    const code = prompt('Enter your 6-digit code to disable MFA:');
+    if (!code) return;
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/mfa/disable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          code,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to disable MFA');
+      }
+
+      setMfaEnabled(false);
+      showToast('MFA disabled successfully', 'success');
+    } catch (error: any) {
+      showToast(error.message, 'error');
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -159,6 +311,64 @@ export const Profile = () => {
               </Button>
             )}
           </Form>
+        </CardBody>
+      </ProfileCard>
+
+      {/* MFA Settings Card */}
+      <ProfileCard>
+        <CardHeader>
+          <CardTitle>Two-Factor Authentication</CardTitle>
+        </CardHeader>
+        <CardBody>
+          <div style={{ marginBottom: '1rem' }}>
+            <StatusBadge enabled={mfaEnabled}>
+              {mfaEnabled ? 'Enabled' : 'Disabled'}
+            </StatusBadge>
+          </div>
+
+          {mfaSetupMode && mfaQRCode && mfaSecret ? (
+            <div>
+              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#666' }}>
+                Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+              </p>
+              <QRCodeImage src={mfaQRCode} alt="MFA QR Code" />
+              <p style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>
+                Or enter this code manually:
+              </p>
+              <SecretKey>{mfaSecret}</SecretKey>
+              
+              <MFAVerification
+                userId={user?.id || ''}
+                onVerify={handleMFAVerify}
+                onCancel={() => {
+                  setMfaSetupMode(false);
+                  setMfaQRCode(null);
+                  setMfaSecret(null);
+                }}
+                isLoading={mfaVerifying}
+                error={mfaError}
+                title="Verify Setup"
+                instructions="Enter the 6-digit code from your authenticator app to complete setup"
+              />
+            </div>
+          ) : (
+            <div>
+              {mfaEnabled ? (
+                <Button variant="outline" onClick={handleMFADisable}>
+                  Disable MFA
+                </Button>
+              ) : (
+                <Button onClick={handleMFASetup}>
+                  Enable MFA
+                </Button>
+              )}
+              <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#666' }}>
+                {mfaEnabled 
+                  ? 'Your account is protected with two-factor authentication.'
+                  : 'Add an extra layer of security to your account by enabling two-factor authentication.'}
+              </p>
+            </div>
+          )}
         </CardBody>
       </ProfileCard>
     </ProfileContainer>
