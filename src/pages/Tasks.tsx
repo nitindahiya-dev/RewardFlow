@@ -6,7 +6,7 @@ import { Button, Input, TextArea, Card, CardHeader, CardTitle, CardBody, FormGro
 import { DatePicker } from '../components/common/DatePicker';
 import { TimePicker } from '../components/common/TimePicker';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchTasks, createTask, updateTask, deleteTask, toggleTaskComplete, Task } from '../store/slices/taskSlice';
+import { fetchTasks, createTask, updateTask, deleteTask, toggleTaskComplete, searchTasks, Task } from '../store/slices/taskSlice';
 import { contractService } from '../services/contractService';
 import { useToast } from '../components/common/Toast';
 
@@ -293,9 +293,76 @@ const SvgIcon = styled.svg`
   stroke-linejoin: round;
 `;
 
+const TagsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.spacing.xs};
+  margin-top: ${({ theme }) => theme.spacing.sm};
+`;
+
+const Tag = styled.span`
+  display: inline-block;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  background: ${({ theme }) => theme.colors.secondary}20;
+  color: ${({ theme }) => theme.colors.secondary};
+  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  font-size: ${({ theme }) => theme.fontSize.sm};
+  font-weight: ${({ theme }) => theme.fontWeight.medium};
+`;
+
+const HighlightedText = styled.span`
+  background: ${({ theme }) => theme.colors.warning}40;
+  color: ${({ theme }) => theme.colors.text};
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: ${({ theme }) => theme.fontWeight.semibold};
+`;
+
+const SearchBarContainer = styled.div`
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
+`;
+
+const SearchInputWrapper = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const SearchIconWrapper = styled.div`
+  position: absolute;
+  left: ${({ theme }) => theme.spacing.md};
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  color: ${({ theme }) => theme.colors.textSecondary};
+`;
+
+const SearchInput = styled(Input)`
+  padding-left: ${({ theme }) => `calc(${theme.spacing.md} + 24px + ${theme.spacing.sm})`};
+  width: 100%;
+`;
+
+const SearchError = styled.div`
+  margin-top: ${({ theme }) => theme.spacing.sm};
+  padding: ${({ theme }) => theme.spacing.sm};
+  background-color: ${({ theme }) => theme.colors.danger}20;
+  border: 1px solid ${({ theme }) => theme.colors.danger};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  color: ${({ theme }) => theme.colors.danger};
+  font-size: ${({ theme }) => theme.fontSize.sm};
+`;
+
+const SearchLoading = styled.div`
+  margin-top: ${({ theme }) => theme.spacing.xs};
+  padding: ${({ theme }) => theme.spacing.xs};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  font-size: ${({ theme }) => theme.fontSize.sm};
+  font-style: italic;
+`;
+
 export const Tasks = () => {
   const dispatch = useAppDispatch();
-  const { tasks, isLoading, error } = useAppSelector((state) => state.tasks);
+  const { tasks, isLoading, error, searchResults, searchQuery, isSearching, searchError } = useAppSelector((state) => state.tasks);
   const { user } = useAppSelector((state) => state.auth);
   
   const [showForm, setShowForm] = useState(false);
@@ -320,6 +387,25 @@ export const Tasks = () => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // Highlight matching text in search results
+  const highlightText = (text: string, query: string): React.ReactNode => {
+    if (!showSearchResults || !query || query.length < 2) return text;
+    
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => 
+      regex.test(part) ? (
+        <HighlightedText key={index}>{part}</HighlightedText>
+      ) : (
+        part
+      )
+    );
+  };
 
   // Fetch tasks when component mounts or user changes
   useEffect(() => {
@@ -327,6 +413,27 @@ export const Tasks = () => {
       dispatch(fetchTasks(user.id));
     }
   }, [dispatch, user?.id]);
+
+  // Debounce search (300ms delay)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const timeoutId = setTimeout(() => {
+      if (searchInput.trim().length >= 2) {
+        // >= 2 characters → Continue with search
+        dispatch(searchTasks({ query: searchInput.trim(), userId: user.id }));
+        setShowSearchResults(true);
+      } else if (searchInput.trim().length === 0) {
+        // Empty query → Show recent tasks
+        setShowSearchResults(false);
+      } else {
+        // < 2 characters → Show recent tasks
+        setShowSearchResults(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchInput, dispatch, user?.id]);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -341,7 +448,7 @@ export const Tasks = () => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [deleteConfirm.show]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -500,29 +607,7 @@ export const Tasks = () => {
       ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
       : [];
 
-    if (editingTask) {
-      // Update existing task
-      try {
-        await dispatch(
-          updateTask({
-            id: editingTask,
-            title: formData.title,
-            description: formData.description,
-            dueDate: dueDateISO,
-            priority: formData.priority,
-            assignee: formData.assignee || null,
-            tags: tagsArray,
-          })
-        ).unwrap();
-        showToast('Task updated successfully!', 'success');
-        setEditingTask(null);
-        setFormData({ title: '', description: '', dueDate: '', dueTime: '', priority: 'Medium', assignee: '', tags: '', hasWeb3Reward: false, rewardAmount: '', rewardToken: '' });
-        setShowForm(false);
-      } catch (error: any) {
-        showToast(error.message || 'Failed to update task', 'error');
-      }
-    } else {
-      // Create new task
+    // Create new task
       try {
         let transactionHash: string | null = null;
         let blockchainTaskId: string | null = null;
@@ -656,7 +741,7 @@ export const Tasks = () => {
 
         // Create task in database
         // Only include Web3 data if blockchain creation was successful
-        const hasSuccessfulWeb3Reward = formData.hasWeb3Reward && transactionHash && blockchainTaskId;
+        const hasSuccessfulWeb3Reward = !!(formData.hasWeb3Reward && transactionHash && blockchainTaskId);
         
         await dispatch(
           createTask({
@@ -687,7 +772,6 @@ export const Tasks = () => {
       } catch (error: any) {
         showToast(error.message || 'Failed to create task', 'error');
       }
-    }
   };
 
   const handleEdit = (task: Task) => {
@@ -899,6 +983,16 @@ export const Tasks = () => {
     </SvgIcon>
   );
 
+  const SearchIcon = () => (
+    <SvgIcon viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </SvgIcon>
+  );
+
+  // Determine which tasks to display based on search state
+  const displayTasks = showSearchResults && searchInput.trim().length >= 2 ? searchResults : tasks;
+
   return (
     <TasksContainer>
       <TasksHeader>
@@ -910,6 +1004,37 @@ export const Tasks = () => {
           {showForm ? 'Cancel' : 'Add Task'}
         </Button>
       </TasksHeader>
+
+      {/* Search Bar - Only show when tasks are available */}
+      {!isLoading && tasks.length > 0 && (
+        <SearchBarContainer>
+          <SearchInputWrapper>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <SearchInput
+              type="text"
+              placeholder="Search tasks by title, description, or tags..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchInput('');
+                  setShowSearchResults(false);
+                }
+              }}
+            />
+          </SearchInputWrapper>
+          {isSearching && (
+            <SearchLoading>Searching...</SearchLoading>
+          )}
+          {searchError && (
+            <SearchError>
+              {searchError}
+            </SearchError>
+          )}
+        </SearchBarContainer>
+      )}
 
       {error && (
         <ErrorMessage>
@@ -1116,33 +1241,86 @@ export const Tasks = () => {
 
       {!isLoading && (
         <TasksList>
-          {tasks.length === 0 ? (
+          {displayTasks.length === 0 ? (
             <EmptyState>
-              <EmptyStateTitle>No tasks yet</EmptyStateTitle>
-              <p>Click "Add Task" to create your first task!</p>
+              <EmptyStateTitle>
+                {showSearchResults && searchInput.trim().length >= 2 
+                  ? 'No tasks found' 
+                  : 'No tasks yet'}
+              </EmptyStateTitle>
+              <p>
+                {showSearchResults && searchInput.trim().length >= 2
+                  ? `No tasks match "${searchInput}"`
+                  : 'Click "Add Task" to create your first task!'}
+              </p>
             </EmptyState>
           ) : (
-          tasks.map((task) => (
-            <TaskCard key={task.id}>
+          displayTasks.map((task) => (
+            <TaskCard 
+              key={task.id}
+              onClick={() => {
+                // User clicks on result - highlight task in list
+                // Scroll to task if needed
+                const element = document.getElementById(`task-${task.id}`);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  // Temporary highlight effect
+                  element.style.transition = 'all 0.3s';
+                  element.style.boxShadow = '0 0 20px rgba(99, 102, 241, 0.5)';
+                  setTimeout(() => {
+                    element.style.boxShadow = '';
+                  }, 2000);
+                }
+              }}
+              id={`task-${task.id}`}
+            >
               <TaskHeader>
-                <TaskTitle>{task.title}</TaskTitle>
+                <TaskTitle>
+                  {showSearchResults && searchInput.trim().length >= 2
+                    ? highlightText(task.title, searchInput.trim())
+                    : task.title}
+                </TaskTitle>
                 <TaskActions>
-                  <Button size="sm" variant="outline" onClick={() => handleEdit(task)}>
+                  <Button size="sm" variant="outline" onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(task);
+                  }}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="danger" onClick={() => handleDeleteClick(task.id)}>
+                  <Button size="sm" variant="danger" onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(task.id);
+                  }}>
                     Delete
                   </Button>
                 </TaskActions>
               </TaskHeader>
-              <TaskDescription>{task.description}</TaskDescription>
+              <TaskDescription>
+                {showSearchResults && searchInput.trim().length >= 2 && task.description
+                  ? highlightText(task.description, searchInput.trim())
+                  : task.description}
+              </TaskDescription>
               {task.dueDate && <CountdownDisplay dueDate={task.dueDate} />}
+              {task.tags && task.tags.length > 0 && (
+                <TagsContainer>
+                  {task.tags.map((tag, index) => (
+                    <Tag key={index}>
+                      {showSearchResults && searchInput.trim().length >= 2
+                        ? highlightText(tag, searchInput.trim())
+                        : tag}
+                    </Tag>
+                  ))}
+                </TagsContainer>
+              )}
               <TaskMeta>
                 <CheckboxWrapper>
                   <Checkbox
                     type="checkbox"
                     checked={task.completed}
-                    onChange={() => handleToggleComplete(task)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleToggleComplete(task);
+                    }}
                   />
                   <CheckboxLabel completed={task.completed}>
                     {task.completed ? 'Completed' : 'Mark as complete'}

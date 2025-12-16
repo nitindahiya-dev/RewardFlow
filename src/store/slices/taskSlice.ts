@@ -42,12 +42,20 @@ interface TaskState {
   tasks: Task[];
   isLoading: boolean;
   error: string | null;
+  searchResults: Task[];
+  searchQuery: string;
+  isSearching: boolean;
+  searchError: string | null;
 }
 
 const initialState: TaskState = {
   tasks: [],
   isLoading: false,
   error: null,
+  searchResults: [],
+  searchQuery: '',
+  isSearching: false,
+  searchError: null,
 };
 
 // Async thunks for API calls
@@ -176,6 +184,38 @@ export const deleteTask = createAsyncThunk(
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to delete task');
+    }
+  }
+);
+
+export const searchTasks = createAsyncThunk(
+  'tasks/searchTasks',
+  async (searchData: { query: string; userId: string }, { rejectWithValue }) => {
+    try {
+      // CHECK: Query length < 2 characters → Show recent tasks
+      if (searchData.query.length < 2) {
+        // Return empty results for short queries
+        return [];
+      }
+
+      const response = await fetch(`http://localhost:5000/api/tasks/search?q=${encodeURIComponent(searchData.query)}&userId=${searchData.userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to search tasks');
+      }
+
+      const results = await response.json();
+      return results.map((task: any) => ({
+        ...task,
+        createdAt: formatDate(task.createdAt),
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+      }));
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to search tasks');
     }
   }
 );
@@ -383,6 +423,22 @@ const taskSlice = createSlice({
           }
         }
         state.error = action.payload as string;
+      })
+      // Search tasks
+      .addCase(searchTasks.pending, (state, action) => {
+        state.isSearching = true;
+        state.searchError = null;
+        state.searchQuery = action.meta.arg.query;
+      })
+      .addCase(searchTasks.fulfilled, (state, action) => {
+        state.isSearching = false;
+        state.searchResults = action.payload;
+        state.searchError = null;
+      })
+      .addCase(searchTasks.rejected, (state, action) => {
+        state.isSearching = false;
+        state.searchError = action.payload as string;
+        // Keep previous search results if available
       });
   },
 });

@@ -551,6 +551,63 @@ app.get('/api/tasks', async (req, res) => {
   }
 });
 
+// GET /api/tasks/search - Search tasks with full-text search
+app.get('/api/tasks/search', async (req, res) => {
+  try {
+    const { q: query, userId } = req.query;
+
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const searchQuery = query.trim();
+
+    // CHECK: Query length < 2 characters → Return empty results
+    if (searchQuery.length < 2) {
+      return res.status(200).json([]);
+    }
+
+    // Full-text search using Prisma (PostgreSQL supports ILIKE for case-insensitive search)
+    // Filter by user permissions - only show tasks created by the user
+    const tasks = await prisma.task.findMany({
+      where: {
+        userId: userId as string,
+        OR: [
+          { title: { contains: searchQuery, mode: 'insensitive' } },
+          { description: { contains: searchQuery, mode: 'insensitive' } },
+          { tags: { hasSome: [searchQuery] } },
+        ],
+      },
+      orderBy: [
+        // Rank by relevance: title matches first, then description, then tags
+        { title: 'asc' },
+        { createdAt: 'desc' },
+      ],
+      take: 20, // Limit to 20 results
+    });
+
+    // Simple relevance ranking: prioritize title matches
+    const rankedTasks = tasks.sort((a, b) => {
+      const aTitleMatch = a.title.toLowerCase().includes(searchQuery.toLowerCase());
+      const bTitleMatch = b.title.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (aTitleMatch && !bTitleMatch) return -1;
+      if (!aTitleMatch && bTitleMatch) return 1;
+      
+      return 0;
+    });
+
+    res.status(200).json(rankedTasks);
+  } catch (error: any) {
+    console.error('Search tasks error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // POST /api/tasks - Create a new task
 app.post('/api/tasks', async (req, res) => {
   try {
