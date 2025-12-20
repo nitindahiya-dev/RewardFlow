@@ -83,7 +83,6 @@ const AppHeader = () => {
             <>
               <Nav>
                 <NavLink to="/tasks">Tasks</NavLink>
-                <NavLink to="/profile">Profile</NavLink>
                 <NavLink to="/user-details">User Details</NavLink>
               </Nav>
               <ProfileIcon to="/profile" title="View Profile" />
