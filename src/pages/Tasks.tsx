@@ -451,6 +451,21 @@ export const Tasks = () => {
     }
   }, [dispatch, user?.id]);
 
+  // Prevent body scrolling when modal is open
+  useEffect(() => {
+    if (showForm) {
+      // Save current overflow style
+      const originalOverflow = document.body.style.overflow;
+      // Prevent scrolling on body
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restore original overflow when modal closes
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [showForm]);
+
   // Debounce search (300ms delay)
   useEffect(() => {
     if (!user?.id) return;
