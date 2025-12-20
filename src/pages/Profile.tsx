@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label, PageContainer, MFAVerification } from '../components/common';
-import { useAppSelector } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { fetchUserProfile, updateUserProfile } from '../store/slices/userSlice';
 import { useToast } from '../components/common/Toast';
 
 const ProfileContainer = styled(PageContainer)`
@@ -87,14 +88,16 @@ const StatusBadge = styled.span<{ enabled: boolean }>`
 `;
 
 export const Profile = () => {
+  const dispatch = useAppDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    bio: 'Software developer passionate about building great applications.',
+    name: '',
+    email: '',
+    bio: '',
   });
   
   const { user, token } = useAppSelector((state) => state.auth);
+  const { profile, isLoading, error } = useAppSelector((state) => state.user);
   const { showToast } = useToast();
   
   // MFA state
@@ -105,12 +108,31 @@ export const Profile = () => {
   const [mfaVerifying, setMfaVerifying] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
 
+  // Fetch user profile when component mounts or user changes
   useEffect(() => {
-    // Fetch user MFA status
     if (user?.id) {
+      dispatch(fetchUserProfile(user.id));
       fetchMFAStatus();
     }
-  }, [user]);
+  }, [dispatch, user?.id]);
+
+  // Initialize form data from Redux store when profile is loaded
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        name: profile.name || '',
+        email: profile.email || '',
+        bio: profile.bio || '',
+      });
+    } else if (user) {
+      // Fallback to auth user data if profile doesn't exist
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        bio: '',
+      });
+    }
+  }, [profile, user]);
 
   const fetchMFAStatus = async () => {
     // This would typically come from user profile API
@@ -225,16 +247,41 @@ export const Profile = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Handle profile update with Redux
-    console.log('Update profile:', formData);
-    setIsEditing(false);
+    if (!user?.id) return;
+
+    try {
+      await dispatch(updateUserProfile({
+        userId: user.id,
+        name: formData.name,
+        email: formData.email,
+        bio: formData.bio,
+      })).unwrap();
+      
+      setIsEditing(false);
+      showToast('Profile updated successfully!', 'success');
+    } catch (error: any) {
+      showToast(error || 'Failed to update profile', 'error');
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // TODO: Reset form data from Redux store
+    // Reset form data from Redux store
+    if (profile) {
+      setFormData({
+        name: profile.name || '',
+        email: profile.email || '',
+        bio: profile.bio || '',
+      });
+    } else if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        bio: '',
+      });
+    }
   };
 
   const getInitials = (name: string) => {
@@ -246,6 +293,24 @@ export const Profile = () => {
       .slice(0, 2);
   };
 
+  // Get display values (use formData if editing, otherwise use profile/user)
+  const displayName = isEditing ? formData.name : (profile?.name || user?.name || '');
+  const displayEmail = isEditing ? formData.email : (profile?.email || user?.email || '');
+
+  if (isLoading && !profile) {
+    return (
+      <ProfileContainer>
+        <ProfileCard>
+          <CardBody>
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              Loading profile...
+            </div>
+          </CardBody>
+        </ProfileCard>
+      </ProfileContainer>
+    );
+  }
+
   return (
     <ProfileContainer>
       <ProfileCard>
@@ -253,11 +318,23 @@ export const Profile = () => {
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardBody>
+          {error && (
+            <div style={{ 
+              padding: '1rem', 
+              marginBottom: '1rem', 
+              backgroundColor: '#fee', 
+              border: '1px solid #fcc', 
+              borderRadius: '4px',
+              color: '#c33'
+            }}>
+              {error}
+            </div>
+          )}
           <ProfileHeader>
-            <Avatar>{getInitials(formData.name)}</Avatar>
+            <Avatar>{getInitials(displayName || 'User')}</Avatar>
             <UserInfo>
-              <UserName>{formData.name}</UserName>
-              <UserEmail>{formData.email}</UserEmail>
+              <UserName>{displayName || 'User'}</UserName>
+              <UserEmail>{displayEmail || 'No email'}</UserEmail>
             </UserInfo>
           </ProfileHeader>
 
@@ -300,8 +377,10 @@ export const Profile = () => {
             </FormGroup>
             {isEditing ? (
               <ButtonGroup>
-                <Button type="submit">Save Changes</Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
                   Cancel
                 </Button>
               </ButtonGroup>
