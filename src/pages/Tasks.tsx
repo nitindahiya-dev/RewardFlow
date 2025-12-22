@@ -10,7 +10,7 @@ import { fetchTasks, createTask, updateTask, deleteTask, toggleTaskComplete, sea
 import { contractService } from '../services/contractService';
 import { useToast } from '../components/common/Toast';
 import { realtimeService } from '../services/realtimeService';
-import { TypingIndicator } from '../components/common';
+import { TypingIndicator, CommentSection } from '../components/common';
 
 const TasksContainer = styled(PageContainer)`
   max-width: 900px;
@@ -1613,6 +1613,9 @@ export const Tasks = () => {
                 </CheckboxWrapper>
                 <TaskDate>Created: {task.createdAt}</TaskDate>
               </TaskMeta>
+              {user?.id && (
+                <CommentSection taskId={task.id} userId={user.id} />
+              )}
             </TaskCard>
           ))
           )}

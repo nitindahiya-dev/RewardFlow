@@ -480,10 +480,6 @@ const taskSlice = createSlice({
   },
 });
 
-export const {
-  clearError,
-} = taskSlice.actions;
-
 export const { 
   clearError, 
   addTaskFromSocket, 

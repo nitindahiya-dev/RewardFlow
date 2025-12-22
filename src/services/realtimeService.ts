@@ -6,6 +6,7 @@ import {
   addTaskFromSocket, 
   deleteTaskFromSocket 
 } from '../store/slices/taskSlice';
+import { addCommentFromSocket } from '../store/slices/commentSlice';
 
 class RealtimeService {
   private socket: Socket | null = null;
@@ -98,6 +99,33 @@ class RealtimeService {
       
       // Dispatch Redux action: deleteTaskFromSocket(taskId)
       store.dispatch(deleteTaskFromSocket(data.taskId));
+    });
+
+    // Listen for comment:added event
+    this.socket.on('comment:added', (data: { comment: any }) => {
+      console.log('Comment added event received:', data);
+      const comment = {
+        ...data.comment,
+        createdAt: data.comment.createdAt ? new Date(data.comment.createdAt).toISOString() : new Date().toISOString(),
+        updatedAt: data.comment.updatedAt ? new Date(data.comment.updatedAt).toISOString() : undefined,
+      };
+      
+      // Get current user from Redux store to avoid duplicate for own comments
+      const state = store.getState();
+      const currentUserId = state.auth.user?.id;
+      
+      // Skip WebSocket update if this is the current user's own comment
+      // (it's already added via the API response in addComment.fulfilled)
+      if (currentUserId && comment.userId === currentUserId) {
+        console.log('Skipping WebSocket update for own comment');
+        return;
+      }
+      
+      // Dispatch Redux action: addCommentFromSocket({ taskId, comment })
+      store.dispatch(addCommentFromSocket({ 
+        taskId: comment.taskId, 
+        comment 
+      }));
     });
   }
 

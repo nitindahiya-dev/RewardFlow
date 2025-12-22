@@ -49,4 +49,5 @@ export { WalletSelectModal } from './WalletSelectModal';
 export { MetaMaskIcon, CoinbaseIcon, WalletConnectIcon } from './WalletIcons';
 export { MFAVerification } from './MFAVerification';
 export { TypingIndicator } from './TypingIndicator';
+export { CommentSection } from './CommentSection';
 

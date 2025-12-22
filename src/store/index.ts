@@ -4,6 +4,7 @@ import authReducer from './slices/authSlice';
 import taskReducer from './slices/taskSlice';
 import userReducer from './slices/userSlice';
 import signUpReducer from './slices/signUpSlice';
+import commentReducer from './slices/commentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     signUp : signUpReducer,
     tasks: taskReducer,
     user: userReducer,
+    comments: commentReducer,
   },
 });
 

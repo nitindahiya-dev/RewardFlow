@@ -215,7 +215,7 @@ export const PublicTasks = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await fetch('/api/tasks/public');
+        const response = await fetch('http://localhost:5000/api/tasks/public');
         
         if (!response.ok) {
           throw new Error('Failed to fetch tasks');
@@ -290,7 +290,7 @@ export const PublicTasks = () => {
           showToast('Task claimed successfully on blockchain!', 'success');
           
           // Also update backend
-          await fetch(`/api/tasks/${task.id}/claim`, {
+          const backendResponse = await fetch(`http://localhost:5000/api/tasks/${task.id}/claim`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -301,8 +301,18 @@ export const PublicTasks = () => {
             }),
           });
 
+          if (!backendResponse.ok) {
+            const contentType = backendResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await backendResponse.json();
+              throw new Error(errorData.error || 'Failed to update backend');
+            } else {
+              throw new Error('Failed to update backend');
+            }
+          }
+
           // Refresh tasks
-          const response = await fetch('/api/tasks/public');
+          const response = await fetch('http://localhost:5000/api/tasks/public');
           if (response.ok) {
             const data = await response.json();
             setTasks(data);
@@ -313,7 +323,7 @@ export const PublicTasks = () => {
         }
       } else {
         // Claim via API only
-        const response = await fetch(`/api/tasks/${task.id}/claim`, {
+        const response = await fetch(`http://localhost:5000/api/tasks/${task.id}/claim`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -324,14 +334,21 @@ export const PublicTasks = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to claim task');
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to claim task');
+          } else {
+            const text = await response.text();
+            throw new Error(`Failed to claim task: ${response.status} ${response.statusText}`);
+          }
         }
 
+        const result = await response.json();
         showToast('Task claimed successfully!', 'success');
         
         // Refresh tasks
-        const response2 = await fetch('/api/tasks/public');
+        const response2 = await fetch('http://localhost:5000/api/tasks/public');
         if (response2.ok) {
           const data = await response2.json();
           setTasks(data);
@@ -373,7 +390,7 @@ export const PublicTasks = () => {
           showToast(message, 'success');
           
           // Also update backend
-          await fetch(`/api/tasks/${task.id}/complete`, {
+          const backendResponse = await fetch(`http://localhost:5000/api/tasks/${task.id}/complete`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -385,8 +402,18 @@ export const PublicTasks = () => {
             }),
           });
 
+          if (!backendResponse.ok) {
+            const contentType = backendResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errorData = await backendResponse.json();
+              throw new Error(errorData.error || 'Failed to update backend');
+            } else {
+              throw new Error('Failed to update backend');
+            }
+          }
+
           // Refresh tasks
-          const response = await fetch('/api/tasks/public');
+          const response = await fetch('http://localhost:5000/api/tasks/public');
           if (response.ok) {
             const data = await response.json();
             setTasks(data);
@@ -397,7 +424,7 @@ export const PublicTasks = () => {
         }
       } else {
         // Complete via API only
-        const response = await fetch(`/api/tasks/${task.id}/complete`, {
+        const response = await fetch(`http://localhost:5000/api/tasks/${task.id}/complete`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -408,14 +435,21 @@ export const PublicTasks = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to complete task');
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to complete task');
+          } else {
+            const text = await response.text();
+            throw new Error(`Failed to complete task: ${response.status} ${response.statusText}`);
+          }
         }
 
+        const result = await response.json();
         showToast('Task completed successfully!', 'success');
         
         // Refresh tasks
-        const response2 = await fetch('/api/tasks/public');
+        const response2 = await fetch('http://localhost:5000/api/tasks/public');
         if (response2.ok) {
           const data = await response2.json();
           setTasks(data);

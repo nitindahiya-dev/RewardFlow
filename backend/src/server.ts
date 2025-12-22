@@ -80,6 +80,99 @@ io.on('connection', (socket) => {
   });
 });
 
+// Comments routes
+// GET /api/tasks/:id/comments - Get all comments for a task
+app.get('/api/tasks/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const comments = await prisma.comment.findMany({
+      where: { taskId: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.status(200).json(comments);
+  } catch (error: any) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /api/tasks/:id/comments - Add a comment to a task
+app.post('/api/tasks/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, userId } = req.body;
+
+    // Validation
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Check if task exists
+    const task = await prisma.task.findUnique({
+      where: { id },
+    });
+
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Create comment
+    const comment = await prisma.comment.create({
+      data: {
+        content: content.trim(),
+        taskId: id,
+        userId: userId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Emit WebSocket event: comment:added
+    io.to(`task:${id}`).emit('comment:added', {
+      comment: {
+        ...comment,
+        userName: user.name,
+      },
+    });
+
+    res.status(201).json(comment);
+  } catch (error: any) {
+    console.error('Create comment error:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // Export io for use in routes
 export { io };
 
@@ -639,6 +732,7 @@ app.get('/api/tasks/public', async (req, res) => {
 });
 
 // GET /api/tasks - Get all tasks for a user (requires auth)
+// Returns tasks created by the user OR tasks assigned to the user (claimed tasks)
 app.get('/api/tasks', async (req, res) => {
   try {
     const { userId } = req.query;
@@ -648,7 +742,12 @@ app.get('/api/tasks', async (req, res) => {
     }
 
     const tasks = await prisma.task.findMany({
-      where: { userId: userId as string },
+      where: {
+        OR: [
+          { userId: userId as string }, // Tasks created by the user
+          { assignee: userId as string }, // Tasks claimed/assigned to the user
+        ],
+      },
       orderBy: { createdAt: 'desc' },
     });
 
