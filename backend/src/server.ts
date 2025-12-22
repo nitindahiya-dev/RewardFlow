@@ -48,6 +48,33 @@ io.on('connection', (socket) => {
     console.log(`Client ${socket.id} left room: task:${taskId}`);
   });
 
+  // Typing indicator
+  socket.on('typing', (data: { taskId: string; userId: string; userName: string }) => {
+    socket.to(`task:${data.taskId}`).emit('user:typing', {
+      taskId: data.taskId,
+      userId: data.userId,
+      userName: data.userName,
+    });
+  });
+
+  // Stop typing indicator
+  socket.on('stop:typing', (data: { taskId: string; userId: string }) => {
+    socket.to(`task:${data.taskId}`).emit('user:stopped:typing', {
+      taskId: data.taskId,
+      userId: data.userId,
+    });
+  });
+
+  // Task description update (collaborative editing)
+  socket.on('task:description:update', (data: { taskId: string; content: string; userId: string }) => {
+    // Broadcast to all users in the task room (except sender)
+    socket.to(`task:${data.taskId}`).emit('task:description:updated', {
+      taskId: data.taskId,
+      content: data.content,
+      userId: data.userId,
+    });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
   });
@@ -1039,7 +1066,6 @@ app.patch('/api/tasks/:id/complete', async (req, res) => {
             // Note: Badge minting is handled automatically by TaskManager contract
             // No need to manually call TaskBadge.mintBadge() here
           }
-          }
         }
       } catch (blockchainError: any) {
         console.error('Blockchain completion error:', blockchainError);
@@ -1080,7 +1106,7 @@ app.patch('/api/tasks/:id/complete', async (req, res) => {
         allTasksCompleted: completedTasks === totalTasks && totalTasks > 0,
       },
       blockchainTxHash: completionTxHash,
-      badgeTokenId,
+      badgeTokenId: finalBadgeTokenId,
     };
 
     // Emit WebSocket event: task:completed

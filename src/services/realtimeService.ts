@@ -126,6 +126,46 @@ class RealtimeService {
   getConnectionStatus(): boolean {
     return this.isConnected;
   }
+
+  // Typing indicator methods
+  sendTypingIndicator(taskId: string, userId: string, userName: string) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('typing', { taskId, userId, userName });
+    }
+  }
+
+  sendStopTypingIndicator(taskId: string, userId: string) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('stop:typing', { taskId, userId });
+    }
+  }
+
+  // Listen for typing indicators from other users
+  onUserTyping(callback: (data: { taskId: string; userId: string; userName: string }) => void) {
+    if (this.socket) {
+      this.socket.on('user:typing', callback);
+    }
+  }
+
+  onUserStoppedTyping(callback: (data: { taskId: string; userId: string }) => void) {
+    if (this.socket) {
+      this.socket.on('user:stopped:typing', callback);
+    }
+  }
+
+  // Task description update (collaborative editing)
+  sendDescriptionUpdate(taskId: string, content: string, userId: string) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('task:description:update', { taskId, content, userId });
+    }
+  }
+
+  // Listen for description updates from other users
+  onDescriptionUpdate(callback: (data: { taskId: string; content: string; userId: string }) => void) {
+    if (this.socket) {
+      this.socket.on('task:description:updated', callback);
+    }
+  }
 }
 
 export const realtimeService = new RealtimeService();

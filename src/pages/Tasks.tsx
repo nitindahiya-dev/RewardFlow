@@ -10,6 +10,7 @@ import { fetchTasks, createTask, updateTask, deleteTask, toggleTaskComplete, sea
 import { contractService } from '../services/contractService';
 import { useToast } from '../components/common/Toast';
 import { realtimeService } from '../services/realtimeService';
+import { TypingIndicator } from '../components/common';
 
 const TasksContainer = styled(PageContainer)`
   max-width: 900px;
@@ -427,6 +428,11 @@ export const Tasks = () => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  
+  // Collaborative editing state
+  const [typingUsers, setTypingUsers] = useState<Map<string, { userName: string; timeoutId: NodeJS.Timeout }>>(new Map());
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
 
   // Highlight matching text in search results
   const highlightText = (text: string, query: string): React.ReactNode => {
@@ -520,6 +526,117 @@ export const Tasks = () => {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [deleteConfirm.show, showForm]);
+
+  // Handle typing detection with debouncing
+  useEffect(() => {
+    if (editingTask && formData.description && user?.id && user?.name) {
+      // Clear existing typing timeout
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+
+      // Send typing indicator immediately on first keystroke
+      if (!isTyping) {
+        setIsTyping(true);
+        realtimeService.sendTypingIndicator(editingTask, user.id, user.name);
+      }
+
+      // Debounce: Send typing indicator every 500ms while typing
+      const timeout = setTimeout(() => {
+        realtimeService.sendTypingIndicator(editingTask, user.id, user.name);
+      }, 500);
+      setTypingTimeout(timeout);
+
+      // Stop typing indicator after 2 seconds of inactivity
+      const stopTypingTimeout = setTimeout(() => {
+        setIsTyping(false);
+        realtimeService.sendStopTypingIndicator(editingTask, user.id);
+      }, 2000);
+
+      // Send description update via WebSocket for collaborative editing
+      // Debounce description updates (500ms)
+      const descriptionUpdateTimeout = setTimeout(() => {
+        if (editingTask && user?.id) {
+          realtimeService.sendDescriptionUpdate(editingTask, formData.description, user.id);
+        }
+      }, 500);
+
+      return () => {
+        clearTimeout(timeout);
+        clearTimeout(stopTypingTimeout);
+        clearTimeout(descriptionUpdateTimeout);
+      };
+    }
+  }, [formData.description, editingTask, user?.id, user?.name, typingTimeout, isTyping]);
+
+  // Set up typing indicator listeners for other users
+  useEffect(() => {
+    if (!editingTask) return;
+
+    const handleUserTyping = (data: { taskId: string; userId: string; userName: string }) => {
+      if (data.userId === user?.id) return; // Don't show own typing indicator
+      if (data.taskId !== editingTask) return; // Only show for current editing task
+      
+      setTypingUsers(prev => {
+        const newMap = new Map(prev);
+        
+        // Clear existing timeout for this user
+        const existing = newMap.get(data.userId);
+        if (existing?.timeoutId) {
+          clearTimeout(existing.timeoutId);
+        }
+        
+        // Set new timeout to remove typing indicator after 2 seconds
+        const timeoutId = setTimeout(() => {
+          setTypingUsers(prevMap => {
+            const updatedMap = new Map(prevMap);
+            updatedMap.delete(data.userId);
+            return updatedMap;
+          });
+        }, 2000);
+        
+        newMap.set(data.userId, { userName: data.userName, timeoutId });
+        return newMap;
+      });
+    };
+
+    const handleUserStoppedTyping = (data: { taskId: string; userId: string }) => {
+      if (data.userId === user?.id) return;
+      if (data.taskId !== editingTask) return;
+      
+      setTypingUsers(prev => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(data.userId);
+        if (existing?.timeoutId) {
+          clearTimeout(existing.timeoutId);
+        }
+        newMap.delete(data.userId);
+        return newMap;
+      });
+    };
+
+    const handleDescriptionUpdate = (data: { taskId: string; content: string; userId: string }) => {
+      if (data.userId === user?.id) return; // Don't update if it's our own change
+      if (data.taskId !== editingTask) return; // Only update if editing this task
+      
+      // Update description in form
+      setFormData(prev => ({
+        ...prev,
+        description: data.content,
+      }));
+    };
+
+    realtimeService.onUserTyping(handleUserTyping);
+    realtimeService.onUserStoppedTyping(handleUserStoppedTyping);
+    realtimeService.onDescriptionUpdate(handleDescriptionUpdate);
+
+    return () => {
+      // Cleanup typing users timeouts
+      typingUsers.forEach(({ timeoutId }) => {
+        clearTimeout(timeoutId);
+      });
+    };
+  }, [user?.id, editingTask, typingUsers]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -870,6 +987,9 @@ export const Tasks = () => {
       return;
     }
 
+    // Join task room for collaborative editing
+    realtimeService.joinTaskRoom(task.id);
+
     // Load task data into form
     let dueDate = '';
     let dueTime = '';
@@ -1009,6 +1129,21 @@ export const Tasks = () => {
   };
 
   const handleCancel = () => {
+    // Leave task room if editing
+    if (editingTask && user?.id) {
+      realtimeService.leaveTaskRoom(editingTask);
+      // Stop typing indicator
+      if (isTyping) {
+        realtimeService.sendStopTypingIndicator(editingTask, user.id);
+        setIsTyping(false);
+      }
+      // Clear typing timeout
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        setTypingTimeout(null);
+      }
+    }
+    
     setFormData({ title: '', description: '', dueDate: '', dueTime: '', priority: 'Medium', assignee: '', tags: '', hasWeb3Reward: false, rewardAmount: '', rewardToken: '' });
     setEditingTask(null);
     setShowForm(false);
@@ -1204,6 +1339,14 @@ export const Tasks = () => {
                   onKeyDown={handleKeyDown}
                   placeholder="Enter task description"
                 />
+                {/* Show typing indicators for other users */}
+                {editingTask && typingUsers.size > 0 && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    {Array.from(typingUsers.values()).map(({ userName }, index) => (
+                      <TypingIndicator key={`${userName}-${index}`} userName={userName} />
+                    ))}
+                  </div>
+                )}
               </FormGroup>
               <FormGroup>
                 <Label htmlFor="priority">Priority</Label>
