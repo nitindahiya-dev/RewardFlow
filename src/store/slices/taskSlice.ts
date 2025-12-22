@@ -271,18 +271,26 @@ const taskSlice = createSlice({
           createdAt: formatDate(task.createdAt),
           dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
         });
+      } else {
+        console.log('Task already exists in state, skipping duplicate:', task.id);
       }
     },
     updateTaskFromSocket: (state, action: { payload: Task }) => {
       const task = action.payload;
       const index = state.tasks.findIndex(t => t.id === task.id);
       if (index !== -1) {
-        state.tasks[index] = {
-          ...state.tasks[index],
-          ...task,
-          createdAt: formatDate(task.createdAt),
-          dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
-        };
+        // If task is completed, remove it from the list
+        if (task.completed) {
+          state.tasks = state.tasks.filter(t => t.id !== task.id);
+        } else {
+          // Otherwise, update the task
+          state.tasks[index] = {
+            ...state.tasks[index],
+            ...task,
+            createdAt: formatDate(task.createdAt),
+            dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+          };
+        }
       }
     },
     deleteTaskFromSocket: (state, action: { payload: string }) => {
@@ -328,11 +336,21 @@ const taskSlice = createSlice({
       .addCase(createTask.fulfilled, (state, action) => {
         state.isLoading = false;
         state.tasks = state.tasks.filter(task => !task.id.startsWith('temp-'));
-        state.tasks.unshift({
-          ...action.payload,
-          createdAt: formatDate(action.payload.createdAt),
-          dueDate: action.payload.dueDate ? new Date(action.payload.dueDate).toISOString() : null,
-        });
+        
+        const existingIndex = state.tasks.findIndex(t => t.id === action.payload.id);
+        if (existingIndex === -1) {
+          state.tasks.unshift({
+            ...action.payload,
+            createdAt: formatDate(action.payload.createdAt),
+            dueDate: action.payload.dueDate ? new Date(action.payload.dueDate).toISOString() : null,
+          });
+        } else {
+          state.tasks[existingIndex] = {
+            ...action.payload,
+            createdAt: formatDate(action.payload.createdAt),
+            dueDate: action.payload.dueDate ? new Date(action.payload.dueDate).toISOString() : null,
+          };
+        }
         state.error = null;
       })
       .addCase(createTask.rejected, (state, action) => {
@@ -399,23 +417,47 @@ const taskSlice = createSlice({
         if (action.meta.arg) {
           const index = state.tasks.findIndex(task => task.id === action.meta.arg.taskId);
           if (index !== -1) {
-            state.tasks[index] = {
-              ...state.tasks[index],
-              completed: !state.tasks[index].completed,
-              completedAt: state.tasks[index].completed ? null : new Date().toISOString(),
-            };
+            const wasCompleted = state.tasks[index].completed;
+            const willBeCompleted = !wasCompleted;
+            
+            if (willBeCompleted) {
+              // Remove task from list when completing
+              state.tasks = state.tasks.filter(task => task.id !== action.meta.arg.taskId);
+            } else {
+              // Update task when uncompleting
+              state.tasks[index] = {
+                ...state.tasks[index],
+                completed: false,
+                completedAt: null,
+              };
+            }
           }
         }
       })
       .addCase(toggleTaskComplete.fulfilled, (state, action) => {
         state.isLoading = false;
-        const index = state.tasks.findIndex(task => task.id === action.payload.task.id);
-        if (index !== -1) {
-          state.tasks[index] = {
-            ...action.payload.task,
-            createdAt: formatDate(action.payload.task.createdAt),
-            dueDate: action.payload.task.dueDate ? new Date(action.payload.task.dueDate).toISOString() : null,
-          };
+        
+        // If task was completed, it should already be removed in pending
+        // If task was uncompleted, update it
+        if (!action.payload.task.completed) {
+          const index = state.tasks.findIndex(task => task.id === action.payload.task.id);
+          if (index !== -1) {
+            state.tasks[index] = {
+              ...action.payload.task,
+              createdAt: formatDate(action.payload.task.createdAt),
+              dueDate: action.payload.task.dueDate ? new Date(action.payload.task.dueDate).toISOString() : null,
+            };
+          } else {
+            // Task was removed but now uncompleted, add it back
+            state.tasks.unshift({
+              ...action.payload.task,
+              createdAt: formatDate(action.payload.task.createdAt),
+              dueDate: action.payload.task.dueDate ? new Date(action.payload.task.dueDate).toISOString() : null,
+            });
+          }
+        } else {
+          // Ensure completed task is removed
+          state.tasks = state.tasks.filter(task => task.id !== action.payload.task.id);
         }
         state.error = null;
       })

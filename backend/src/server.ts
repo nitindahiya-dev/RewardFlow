@@ -717,6 +717,7 @@ app.get('/api/tasks/public', async (req, res) => {
       rewardAmount: task.rewardAmount,
       rewardToken: task.rewardToken,
       hasWeb3Reward: task.hasWeb3Reward,
+      blockchainTaskId: task.blockchainTaskId,
       dueDate: task.dueDate,
       createdAt: task.createdAt,
       completed: task.completed,
@@ -1275,8 +1276,8 @@ app.delete('/api/tasks/:id', async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    // Validate ownership - only task creator can delete
-    if (!userId || existingTask.userId !== userId) {
+    // Validate permission - task creator OR assignee can delete
+    if (!userId || (existingTask.userId !== userId && existingTask.assignee !== userId)) {
       return res.status(403).json({ error: 'You do not have permission to delete this task' });
     }
 

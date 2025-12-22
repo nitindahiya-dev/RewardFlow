@@ -191,6 +191,7 @@ interface PublicTask {
   rewardAmount: number;
   rewardToken: string | null;
   hasWeb3Reward: boolean;
+  blockchainTaskId?: string | null;
   dueDate: string | null;
   createdAt: string;
   completed: boolean;
@@ -282,10 +283,25 @@ export const PublicTasks = () => {
 
       // Check if task has Web3 reward
       if (task.hasWeb3Reward) {
+        // Validate blockchainTaskId
+        if (!task.blockchainTaskId) {
+          showToast('This task does not have a blockchain task ID. Cannot claim via blockchain.', 'error');
+          return;
+        }
+        
         // Claim via smart contract
         try {
           await contractService.connect();
-          const result = await contractService.claimTask(parseInt(task.id));
+          
+          const blockchainTaskId = typeof task.blockchainTaskId === 'string' 
+            ? parseInt(task.blockchainTaskId) 
+            : task.blockchainTaskId;
+          
+          if (isNaN(blockchainTaskId) || blockchainTaskId <= 0) {
+            throw new Error(`Invalid blockchain task ID: ${task.blockchainTaskId}`);
+          }
+          
+          const result = await contractService.claimTask(blockchainTaskId);
           
           showToast('Task claimed successfully on blockchain!', 'success');
           
@@ -376,11 +392,20 @@ export const PublicTasks = () => {
 
     try {
       // Check if task has Web3 reward
-      if (task.hasWeb3Reward) {
+      if (task.hasWeb3Reward && task.blockchainTaskId) {
         // Complete via smart contract
         try {
           await contractService.connect();
-          const result = await contractService.completeTask(parseInt(task.id));
+          
+          const blockchainTaskId = typeof task.blockchainTaskId === 'string' 
+            ? parseInt(task.blockchainTaskId) 
+            : task.blockchainTaskId;
+          
+          if (isNaN(blockchainTaskId) || blockchainTaskId <= 0) {
+            throw new Error(`Invalid blockchain task ID: ${task.blockchainTaskId}`);
+          }
+          
+          const result = await contractService.completeTask(blockchainTaskId);
           
           let message = 'Task completed! Reward released!';
           if (result.badgeTokenId) {

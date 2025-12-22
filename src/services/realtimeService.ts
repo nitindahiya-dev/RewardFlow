@@ -54,6 +54,15 @@ class RealtimeService {
 
     this.socket.on('task:created', (data: { task: any; createdBy?: string }) => {
       console.log('Task created event received:', data);
+      
+      const currentUser = store.getState().auth.user;
+      const taskCreatorId = data.task?.createdBy || data.task?.userId || data.createdBy;
+      
+      if (currentUser && taskCreatorId && taskCreatorId === currentUser.id) {
+        console.log('Skipping WebSocket task creation - task created by current user');
+        return;
+      }
+      
       const task = {
         ...data.task,
         createdAt: data.task.createdAt ? new Date(data.task.createdAt).toISOString() : null,

@@ -455,6 +455,34 @@ export const Tasks = () => {
   }, [dispatch, user?.id]);
 
   useEffect(() => {
+    if (!user?.id || tasks.length === 0) return;
+
+    const checkAndDeleteExpiredTasks = async () => {
+      const now = new Date();
+      const expiredTasks = tasks.filter(task => {
+        if (!task.dueDate) return false;
+        const dueDate = new Date(task.dueDate);
+        return dueDate < now && !task.completed;
+      });
+
+      for (const task of expiredTasks) {
+        try {
+          await dispatch(deleteTask({ taskId: task.id, userId: user.id })).unwrap();
+          showToast(`Task "${task.title}" has been automatically removed (deadline passed)`, 'info');
+        } catch (error: any) {
+          console.error(`Failed to auto-delete expired task ${task.id}:`, error);
+        }
+      }
+    };
+
+    checkAndDeleteExpiredTasks();
+    
+    const intervalId = setInterval(checkAndDeleteExpiredTasks, 60000);
+    
+    return () => clearInterval(intervalId);
+  }, [tasks, user?.id, dispatch]);
+
+  useEffect(() => {
     if (tasks.length > 0) {
       tasks.forEach(task => {
         realtimeService.joinTaskRoom(task.id);
@@ -1031,6 +1059,31 @@ export const Tasks = () => {
         // Complete via smart contract
         try {
           await contractService.connect();
+          
+          // Get current user's wallet address
+          const currentWalletAddress = await contractService.getCurrentAddress();
+          
+          // Fetch task from blockchain to verify assignee
+          const blockchainTask = await contractService.getTask(parseInt(task.blockchainTaskId));
+          const blockchainAssignee = blockchainTask.assignee;
+          
+          // Check if task is open (no assignee)
+          if (!blockchainAssignee || blockchainAssignee === ethers.ZeroAddress) {
+            showToast('This task is open and has no assignee. Please claim it first before completing.', 'warning');
+            return;
+          }
+          
+          // Normalize addresses for comparison (case-insensitive)
+          const normalizedAssignee = ethers.getAddress(blockchainAssignee);
+          const normalizedCurrentAddress = ethers.getAddress(currentWalletAddress);
+          
+          // Check if current user is the assignee
+          if (normalizedAssignee !== normalizedCurrentAddress) {
+            const shortAddress = `${blockchainAssignee.substring(0, 6)}...${blockchainAssignee.substring(38)}`;
+            showToast(`Only the assigned user can complete this task. Current assignee: ${shortAddress}`, 'error');
+            return;
+          }
+          
           const contractResult = await contractService.completeTask(parseInt(task.blockchainTaskId));
           
           let message = 'Task completed! Reward released!';
@@ -1052,7 +1105,17 @@ export const Tasks = () => {
           await dispatch(fetchTasks(user.id));
         } catch (contractError: any) {
           console.error('Contract complete error:', contractError);
-          showToast(`Failed to complete task on blockchain: ${contractError.message}`, 'error');
+          
+          // Check if error is about assignee
+          if (contractError.message && (contractError.message.includes('Only assignee can complete') || contractError.message.includes('Only assignee'))) {
+            showToast('Only the assigned user can complete this task. If you created this task, you need to claim it first or assign it to yourself.', 'error');
+          } else if (contractError.message && contractError.message.includes('Task deadline passed')) {
+            showToast('Cannot complete task: The deadline has passed.', 'error');
+          } else if (contractError.message && contractError.message.includes('Task not in assigned status')) {
+            showToast('Cannot complete task: Task is not in assigned status.', 'error');
+          } else {
+            showToast(`Failed to complete task on blockchain: ${contractError.message}`, 'error');
+          }
           return;
         }
       } else {
@@ -1191,7 +1254,19 @@ export const Tasks = () => {
   );
 
   // Determine which tasks to display based on search state
-  const displayTasks = showSearchResults && searchInput.trim().length >= 2 ? searchResults : tasks;
+  const displayTasks = (showSearchResults && searchInput.trim().length >= 2 ? searchResults : tasks).filter(task => {
+    // Remove completed tasks
+    if (task.completed) return false;
+    
+    // Filter out expired tasks (unless completed)
+    if (task.dueDate) {
+      const dueDate = new Date(task.dueDate);
+      const now = new Date();
+      return dueDate >= now;
+    }
+    
+    return true;
+  });
 
   return (
     <TasksContainer>
@@ -1525,12 +1600,14 @@ export const Tasks = () => {
                   }}>
                     Edit
                   </Button>
-                  <Button size="sm" variant="danger" onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteClick(task.id);
-                  }}>
-                    Delete
-                  </Button>
+                  {!task.dueDate && (
+                    <Button size="sm" variant="danger" onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(task.id);
+                    }}>
+                      Delete
+                    </Button>
+                  )}
                 </TaskActions>
               </TaskHeader>
               <TaskDescription>
