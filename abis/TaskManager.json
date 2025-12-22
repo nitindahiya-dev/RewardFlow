@@ -83,11 +83,36 @@
         "internalType": "address",
         "name": "assignee",
         "type": "address"
+      }
+    ],
+    "name": "TaskClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "taskId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "assignee",
+        "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
         "name": "rewardAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "badgeTokenId",
         "type": "uint256"
       }
     ],
@@ -110,16 +135,16 @@
         "type": "address"
       },
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "assignee",
-        "type": "address"
-      },
-      {
         "indexed": false,
         "internalType": "uint256",
         "name": "rewardAmount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isOpenForClaiming",
+        "type": "bool"
       }
     ],
     "name": "TaskCreated",
@@ -134,6 +159,19 @@
       }
     ],
     "name": "cancelTask",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "taskId",
+        "type": "uint256"
+      }
+    ],
+    "name": "claimTask",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -218,6 +256,76 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAllOpenTasks",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "internalType": "address",
+            "name": "creator",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "assignee",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "rewardAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "enum TaskManager.TaskStatus",
+            "name": "status",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "dueDate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "rewardToken",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "badgeMinted",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct TaskManager.Task[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -260,9 +368,9 @@
             "type": "uint256"
           },
           {
-            "internalType": "bool",
-            "name": "completed",
-            "type": "bool"
+            "internalType": "enum TaskManager.TaskStatus",
+            "name": "status",
+            "type": "uint8"
           },
           {
             "internalType": "uint256",
@@ -278,6 +386,11 @@
             "internalType": "address",
             "name": "rewardToken",
             "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "badgeMinted",
+            "type": "bool"
           }
         ],
         "internalType": "struct TaskManager.Task",
@@ -309,7 +422,26 @@
         "type": "address"
       }
     ],
-    "name": "getUserTasks",
+    "name": "getUserAssignedTasks",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "getUserCreatedTasks",
     "outputs": [
       {
         "internalType": "uint256[]",
@@ -338,6 +470,32 @@
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_taskBadge",
+        "type": "address"
+      }
+    ],
+    "name": "setTaskBadgeContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "taskBadgeContract",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -400,9 +558,9 @@
         "type": "uint256"
       },
       {
-        "internalType": "bool",
-        "name": "completed",
-        "type": "bool"
+        "internalType": "enum TaskManager.TaskStatus",
+        "name": "status",
+        "type": "uint8"
       },
       {
         "internalType": "uint256",
@@ -418,6 +576,11 @@
         "internalType": "address",
         "name": "rewardToken",
         "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "badgeMinted",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -449,7 +612,31 @@
         "type": "uint256"
       }
     ],
-    "name": "userTasks",
+    "name": "userAssignedTasks",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "userCreatedTasks",
     "outputs": [
       {
         "internalType": "uint256",

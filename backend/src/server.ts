@@ -530,7 +530,50 @@ app.post('/api/auth/web3-verify', async (req, res) => {
 });
 
 // Task routes
-// GET /api/tasks - Get all tasks for a user
+// GET /api/tasks/public - Get all public tasks (no auth required)
+app.get('/api/tasks/public', async (req, res) => {
+  try {
+    // Get all non-completed tasks, ordered by creation date
+    const tasks = await prisma.task.findMany({
+      where: { 
+        completed: false, // Only show available tasks
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100, // Limit to 100 most recent tasks
+    });
+
+    // Format response to include creator name
+    const formattedTasks = tasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      rewardAmount: task.rewardAmount,
+      rewardToken: task.rewardToken,
+      hasWeb3Reward: task.hasWeb3Reward,
+      dueDate: task.dueDate,
+      createdAt: task.createdAt,
+      completed: task.completed,
+      priority: task.priority,
+      tags: task.tags,
+      creatorName: task.user?.name || 'Anonymous',
+    }));
+
+    res.status(200).json(formattedTasks);
+  } catch (error: any) {
+    console.error('Get public tasks error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/tasks - Get all tasks for a user (requires auth)
 app.get('/api/tasks', async (req, res) => {
   try {
     const { userId } = req.query;

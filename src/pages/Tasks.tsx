@@ -1051,12 +1051,20 @@ export const Tasks = () => {
     <TasksContainer>
       <TasksHeader>
         <PageTitle>My Tasks</PageTitle>
-        <Button 
-          onClick={showForm ? handleCancel : () => setShowForm(true)}
-          disabled={isLoading || !user?.id}
-        >
-          {showForm ? 'Cancel' : 'Add Task'}
-        </Button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <Button 
+            variant="outline"
+            onClick={() => window.location.href = '/tasks'}
+          >
+            Browse All Tasks
+          </Button>
+          <Button 
+            onClick={showForm ? handleCancel : () => setShowForm(true)}
+            disabled={isLoading || !user?.id}
+          >
+            {showForm ? 'Cancel' : 'Add Task'}
+          </Button>
+        </div>
       </TasksHeader>
 
       {/* Search Bar - Only show when tasks are available */}

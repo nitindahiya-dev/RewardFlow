@@ -9,6 +9,7 @@ import {
   Signup,
   Profile,
   Tasks,
+  PublicTasks,
   UserDetails,
   Web3Integration,
   AIPowered,
@@ -83,6 +84,7 @@ const AppHeader = () => {
             <>
               <Nav>
                 <NavLink to="/tasks">Tasks</NavLink>
+                <NavLink to="/my-tasks">My Tasks</NavLink>
                 <NavLink to="/user-details">User Details</NavLink>
               </Nav>
               <ProfileIcon to="/profile" title="View Profile" />
@@ -92,6 +94,7 @@ const AppHeader = () => {
             </>
           ) : (
             <Nav>
+              <NavLink to="/tasks">Tasks</NavLink>
               <NavLink to="/login">Login</NavLink>
               <NavLink to="/signup">Sign Up</NavLink>
             </Nav>
@@ -108,8 +111,9 @@ const AppRoutes = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/tasks" element={<PublicTasks />} />
       <Route
-        path="/tasks"
+        path="/my-tasks"
         element={
           <ProtectedRoute>
             <Tasks />

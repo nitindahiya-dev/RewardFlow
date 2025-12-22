@@ -4,6 +4,7 @@ export { Login } from './Login';
 export { Signup } from './Signup';
 export { Profile } from './Profile';
 export { Tasks } from './Tasks';
+export { PublicTasks } from './PublicTasks';
 export { UserDetails } from './UserDetails';
 export { Web3Integration } from './Web3Integration';
 export { AIPowered } from './AIPowered';

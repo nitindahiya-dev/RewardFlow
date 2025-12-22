@@ -392,7 +392,73 @@ API Response
 END
 ```
 
-### 3. **Complete Task Flow**
+### 3. **Complete Task Flow (Authentication Required)**
+
+```
+START
+  ↓
+User wants to complete a task
+  ↓
+CHECK: User authenticated?
+  ├─ NO → Show "Please login to complete tasks"
+  │   ├─ Redirect to /login
+  │   └─ Store return URL
+  │
+  └─ YES → Continue
+  ↓
+CHECK: Task assignment
+  ├─ Task is open (no assignee)?
+  │   ├─ YES → User can claim task first
+  │   │   ├─ Call claimTask() on smart contract (if Web3)
+  │   │   └─ Or update via API
+  │   │
+  │   └─ NO → Continue
+  │
+  └─ Task has assignee?
+      ├─ User is assignee? → YES → Continue
+      └─ User is NOT assignee? → Show error → END
+  ↓
+User clicks checkbox to mark task complete
+  ↓
+CHECK: Task already completed?
+  ├─ YES → Uncomplete task → Different flow
+  └─ NO → Continue
+  ↓
+Redux Action: toggleTaskComplete(taskId) dispatched
+  ↓
+Optimistic Update: Mark task as completed
+  ↓
+CHECK: Task has Web3 reward?
+  ├─ YES → Complete via smart contract
+  │   ├─ Call completeTask(taskId) on TaskManager
+  │   ├─ Contract validates and transfers reward
+  │   ├─ Contract calls TaskBadge.mintBadge() if set
+  │   └─ Contract emits TaskCompleted event
+  │
+  └─ NO → Complete via API
+      ├─ API Call: PATCH /api/tasks/:id/complete
+      └─ Update database only
+  ↓
+API Response / Transaction Confirmation
+  ├─ SUCCESS (200 / Confirmed)
+  │   ├─ Update Redux: updateTask(completedTask)
+  │   ├─ If reward: Show reward notification
+  │   ├─ If badge: Show badge minted notification
+  │   ├─ Update user stats
+  │   ├─ Broadcast completion via WebSocket
+  │   └─ Trigger AI: Update task suggestions
+  │
+  └─ ERROR (500 / Failed)
+      ├─ Revert optimistic update
+      ├─ Show error message
+      └─ Uncheck checkbox
+  ↓
+CHECK: All tasks completed?
+  ├─ YES → Show celebration animation
+  └─ NO → Continue
+  ↓
+END
+```
 
 ```
 START
@@ -519,6 +585,93 @@ END
 
 ## 🔗 Web3 Integration Workflows
 
+### 0. **Public Tasks Browsing Flow (No Auth Required)**
+
+```
+START
+  ↓
+User visits website (not logged in)
+  ↓
+User clicks "Tasks" in header
+  ↓
+Navigate to /tasks (Public Tasks page)
+  ↓
+API Call: GET /api/tasks/public
+  ├─ No authentication required
+  ├─ Returns all non-completed tasks
+  ├─ Includes: title, description, reward, creator info
+  └─ Ordered by creation date (newest first)
+  ↓
+Display all available tasks
+  ├─ Task cards with:
+  │   ├─ Title
+  │   ├─ Description (truncated)
+  │   ├─ Reward amount (ETH/Tokens)
+  │   ├─ Due date
+  │   ├─ Priority
+  │   └─ Creator name
+  ├─ "Login to Complete" button on each task
+  └─ Info banner: "Want to complete tasks? Login or Sign Up"
+  ↓
+User clicks on task or "Login to Complete"
+  ↓
+CHECK: User authenticated?
+  ├─ NO → Redirect to /login with return URL
+  │   └─ After login → Redirect back to /tasks
+  │
+  └─ YES → Show task details / Allow claiming
+  ↓
+END
+```
+
+### 0.1. **Claim and Complete Task Flow (Auth Required)**
+
+```
+START
+  ↓
+User is logged in
+  ↓
+User browses public tasks at /tasks
+  ↓
+User finds a task they want to complete
+  ↓
+User clicks "Claim Task" or "View Details"
+  ↓
+CHECK: Task still available?
+  ├─ NO → Show "Task already claimed" → END
+  └─ YES → Continue
+  ↓
+User claims task
+  ├─ Frontend: Update task status
+  ├─ Backend: Assign task to user
+  └─ If Web3: Call smart contract claimTask()
+  ↓
+Task moves to user's "My Tasks" (/my-tasks)
+  ↓
+User works on task
+  ↓
+User completes task
+  ↓
+CHECK: Task has Web3 reward?
+  ├─ YES → Complete via smart contract
+  │   ├─ Call completeTask() on TaskManager
+  │   ├─ Release escrow payment
+  │   ├─ Mint NFT badge (if enabled)
+  │   └─ Emit TaskCompleted event
+  │
+  └─ NO → Complete via API
+      ├─ API: PATCH /api/tasks/:id/complete
+      └─ Update database
+  ↓
+SUCCESS
+  ├─ Reward transferred to user
+  ├─ Badge minted (if applicable)
+  ├─ Show success notification
+  └─ Update task status
+  ↓
+END
+```
+
 ### 1. **Connect Wallet Flow**
 
 ```
@@ -573,7 +726,72 @@ SUCCESS
 END
 ```
 
-### 2. **Create Task with Crypto Reward Flow**
+### 2. **Create Task with Crypto Reward Flow (Open for Claiming)**
+
+```
+START
+  ↓
+User creates new task (must be logged in)
+  ↓
+User enables "Crypto Reward"
+  ↓
+User can choose:
+  ├─ Pre-assign to specific address
+  └─ Leave open for anyone to claim (assignee = address(0))
+  ↓
+Show reward configuration
+  ├─ Token type (ETH/USDC/DAI/RFT)
+  ├─ Amount
+  ├─ Assignee (optional - leave empty for open tasks)
+  └─ Auto-release on completion
+  ↓
+User enters reward amount
+  ↓
+User clicks "Create Task"
+  ↓
+VALIDATION
+  ├─ Amount > 0? → NO → Show error → BACK
+  ├─ Sufficient balance? → NO → Show error → BACK
+  └─ YES → Continue
+  ↓
+Request wallet connection (if not connected)
+  ↓
+Request transaction approval
+  ├─ Amount: reward amount + gas
+  ├─ To: TaskManager contract address
+  └─ Data: createTaskWithETH() or createTaskWithToken()
+  ↓
+User approves transaction
+  ├─ REJECTED → Show message → END
+  └─ APPROVED → Continue
+  ↓
+Transaction sent to blockchain
+  ↓
+Show loading: "Creating task on blockchain..."
+  ↓
+Wait for transaction confirmation
+  ├─ Pending → Show status
+  ├─ Confirmed → Continue
+  └─ Failed → Show error → END
+  ↓
+Smart contract emits TaskCreated event
+  ├─ If assignee = address(0): status = Open
+  └─ If assignee set: status = Assigned
+  ↓
+Backend listens to event
+  ├─ Parse event data
+  ├─ Create task record in database
+  ├─ Mark as "open for claiming" if no assignee
+  └─ Link to blockchain transaction
+  ↓
+SUCCESS
+  ├─ Update Redux: addTask(task)
+  ├─ Show success: "Task created on blockchain!"
+  ├─ Show transaction hash (clickable)
+  └─ Task appears in public tasks list (if open)
+  ↓
+END
+```
 
 ```
 START
@@ -638,7 +856,72 @@ SUCCESS
 END
 ```
 
-### 3. **Complete Task with Crypto Reward Flow**
+### 3. **Complete Task with Crypto Reward Flow (Integrated with Badge Minting)**
+
+```
+START
+  ↓
+User marks task as complete (must be logged in)
+  ↓
+CHECK: User is assignee?
+  ├─ NO → Show error "You are not assigned to this task" → END
+  └─ YES → Continue
+  ↓
+CHECK: Task has crypto reward?
+  ├─ NO → Normal completion flow (API only)
+  └─ YES → Continue
+  ↓
+CHECK: Escrow exists on blockchain?
+  ├─ NO → Show error → END
+  └─ YES → Continue
+  ↓
+Request wallet connection (if needed)
+  ↓
+Request transaction approval
+  ├─ Function: completeTask(taskId)
+  ├─ Gas fee estimation
+  └─ Show preview
+  ↓
+User approves transaction
+  ├─ REJECTED → Show error → END
+  └─ APPROVED → Continue
+  ↓
+Transaction sent to blockchain
+  ↓
+Smart contract: completeTask()
+  ├─ Validate: User is assignee
+  ├─ Validate: Task not already completed
+  ├─ Validate: Deadline not passed
+  ├─ Transfer reward to assignee (ETH or Token)
+  ├─ Call TaskBadge.mintBadge() if contract set
+  │   ├─ Mint NFT badge to assignee
+  │   ├─ Set badge URI
+  │   └─ Emit BadgeMinted event
+  └─ Emit TaskCompleted event (includes badgeTokenId)
+  ↓
+Wait for transaction confirmation
+  ↓
+Transaction confirmed
+  ↓
+Backend listens to events
+  ├─ TaskCompleted event
+  │   ├─ Update task status in database
+  │   ├─ Record payment transaction
+  │   └─ Update user stats
+  └─ BadgeMinted event (if applicable)
+      ├─ Store badge token ID
+      ├─ Link badge to task
+      └─ Update user's badge collection
+  ↓
+SUCCESS
+  ├─ Show notification: "Task completed! Reward released!"
+  ├─ If badge minted: "Achievement badge minted! Token ID: X"
+  ├─ Show transaction hash
+  ├─ Update wallet balance display
+  └─ Update task status
+  ↓
+END
+```
 
 ```
 START
@@ -685,55 +968,95 @@ SUCCESS
 END
 ```
 
-### 4. **Mint NFT Badge Flow**
+### 4. **Mint NFT Badge Flow (Automatic on Task Completion)**
 
 ```
 START
   ↓
-User completes milestone
-  ├─ 10 tasks completed
-  ├─ 100 tasks completed
-  └─ All tasks in category completed
+User completes a task
   ↓
-System detects milestone
+Task completion confirmed (via smart contract or API)
   ↓
-CHECK: NFT already minted?
-  ├─ YES → Show "Already earned" → END
+CHECK: Task has badge enabled?
+  ├─ NO → Skip badge minting → END
+  └─ YES → Continue
+  ↓
+CHECK: Badge already minted for this task?
+  ├─ YES → Skip → END
   └─ NO → Continue
   ↓
-Show notification: "You earned a badge!"
+Smart contract: completeTask() called
+  ├─ TaskManager contract validates completion
+  ├─ Transfers reward to assignee
+  └─ Calls TaskBadge.mintBadge() automatically
+      ├─ Function: mintBadge(assignee, taskId, badgeURI)
+      ├─ Validates: Only TaskManager can call
+      ├─ Validates: Badge not already minted
+      ├─ Mints NFT to assignee
+      ├─ Sets token URI
+      └─ Emits BadgeMinted event
   ↓
-User clicks "Mint NFT"
+Transaction confirmed
   ↓
-Request wallet connection (if needed)
-  ↓
-Request transaction approval
-  ├─ Function: mintBadge(badgeType, userAddress)
-  ├─ Gas fee estimation
-  └─ Show preview
-  ↓
-User approves
-  ├─ REJECTED → Show message → END
-  └─ APPROVED → Continue
-  ↓
-Transaction sent
-  ↓
-Wait for confirmation
-  ↓
-NFT minted
-  ↓
-Backend updates user profile
-  ├─ Add NFT to user's collection
-  └─ Update achievements
+Backend listens to BadgeMinted event
+  ├─ Parse event data
+  ├─ Store badge token ID in database
+  ├─ Link badge to task
+  └─ Update user's badge collection
   ↓
 SUCCESS
-  ├─ Show celebration animation
-  ├─ Display NFT in profile
-  ├─ Show OpenSea link
-  └─ Update Redux: addNFT(nft)
+  ├─ Show notification: "Achievement badge minted!"
+  ├─ Display badge in user profile
+  ├─ Show badge token ID
+  └─ Update Redux: addBadge(badge)
   ↓
 END
 ```
+
+### 5. **Smart Contract Architecture & Improvements**
+
+#### **Current Contract Issues & Recommendations:**
+
+**TaskManager.sol Issues:**
+1. ❌ **No TaskBadge Integration**: TaskManager doesn't call TaskBadge.mintBadge() on completion
+2. ❌ **No Open Tasks Support**: All tasks require assignee at creation (can't create open tasks)
+3. ❌ **No Task Claiming**: Users can't claim open tasks
+4. ❌ **No getAllTasks()**: Can't browse all available tasks from contract
+5. ❌ **Limited Status Tracking**: Only uses boolean `completed`, no status enum
+
+**Recommended Improvements (See TaskManager_IMPROVED.sol):**
+1. ✅ **Add TaskStatus Enum**: Open, Assigned, Completed, Cancelled
+2. ✅ **Add TaskBadge Integration**: 
+   - Add `taskBadgeContract` address variable
+   - Call `TaskBadge.mintBadge()` in `completeTask()`
+   - Return badge token ID in TaskCompleted event
+3. ✅ **Support Open Tasks**:
+   - Allow `assignee = address(0)` when creating tasks
+   - Add `claimTask()` function for users to claim open tasks
+   - Add `getAllOpenTasks()` view function
+4. ✅ **Better Task Tracking**:
+   - Separate `userCreatedTasks` and `userAssignedTasks` mappings
+   - Track badge minting status with `badgeMinted` flag
+
+**TaskBadge.sol Status:**
+- ✅ Contract is well-designed
+- ✅ Proper access control (only TaskManager can mint)
+- ✅ Prevents duplicate badge minting
+- ⚠️ **Note**: Ensure TaskManager contract address is set via `setTaskManager()`
+
+**RewardToken.sol Status:**
+- ✅ Contract is well-designed
+- ✅ Proper max supply limit
+- ✅ Owner can mint tokens for rewards
+- ✅ Batch minting support
+
+**Deployment & Setup Steps:**
+1. Deploy RewardToken contract (owner = deployer)
+2. Deploy TaskBadge contract (owner = deployer)
+3. Deploy TaskManager contract (owner = deployer)
+4. Call `TaskBadge.setTaskManager(TaskManagerAddress)` 
+5. Call `TaskManager.setTaskBadgeContract(TaskBadgeAddress)`
+6. Verify contracts are linked correctly
 
 ---
 
