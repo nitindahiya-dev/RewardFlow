@@ -1359,6 +1359,110 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
+// User profile routes
+// GET /api/users/:userId/profile - Get user profile
+app.get('/api/users/:userId/profile', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        bio: true,
+        phone: true,
+        location: true,
+        website: true,
+        role: true,
+        company: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email || '',
+      bio: user.bio || '',
+      phone: user.phone || '',
+      location: user.location || '',
+      website: user.website || '',
+      role: user.role || '',
+      company: user.company || '',
+      joinDate: user.createdAt.toISOString(),
+      lastActive: user.createdAt.toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /api/users/:userId/profile - Update user profile
+app.put('/api/users/:userId/profile', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, bio, phone, location, website, role, company } = req.body;
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(email !== undefined && { email }),
+        ...(bio !== undefined && { bio }),
+        ...(phone !== undefined && { phone }),
+        ...(location !== undefined && { location }),
+        ...(website !== undefined && { website }),
+        ...(role !== undefined && { role }),
+        ...(company !== undefined && { company }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        bio: true,
+        phone: true,
+        location: true,
+        website: true,
+        role: true,
+        company: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(200).json({
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email || '',
+      bio: updatedUser.bio || '',
+      phone: updatedUser.phone || '',
+      location: updatedUser.location || '',
+      website: updatedUser.website || '',
+      role: updatedUser.role || '',
+      company: updatedUser.company || '',
+      joinDate: updatedUser.createdAt.toISOString(),
+      lastActive: updatedUser.createdAt.toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);

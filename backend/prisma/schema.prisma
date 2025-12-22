@@ -13,6 +13,11 @@ model User {
   password     String?
   walletAddress String? @unique
   bio          String?
+  phone        String?
+  location     String?
+  website      String?
+  role         String?
+  company      String?
   mfaEnabled   Boolean  @default(false)
   mfaSecret    String?
   mfaAttempts  Int      @default(0)
