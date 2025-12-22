@@ -249,13 +249,25 @@ NODE_ENV=development
 JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
 ```
 
-### Frontend Environment Variables (Optional)
+### Frontend Environment Variables
 
-Create a `.env` file in the root directory if needed:
+**Required:** Create a `.env` file in the root directory (same level as `package.json`):
 
 ```env
+# Frontend Environment Variables
+# API Base URL - Change this to your production URL when deploying
 VITE_API_URL=http://localhost:5000
 ```
+
+**For Production:**
+```env
+VITE_API_URL=https://your-production-api.com
+```
+
+**Note:** 
+- Copy `.env.example` to `.env` and update the values
+- The `.env` file is already in `.gitignore` and won't be committed
+- See `ENV_SETUP.md` for detailed setup instructions
 
 ## 🏃 Running the Project
 

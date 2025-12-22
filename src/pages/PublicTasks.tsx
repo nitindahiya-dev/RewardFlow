@@ -13,6 +13,7 @@ import {
 } from '../components/common';
 import { useAppSelector } from '../store/hooks';
 import { contractService } from '../services/contractService';
+import { API_ENDPOINTS } from '../config/api';
 
 const TasksContainer = styled(PageContainer)`
   padding: 2rem;
@@ -215,7 +216,7 @@ export const PublicTasks = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await fetch('http://localhost:5000/api/tasks/public');
+        const response = await fetch(API_ENDPOINTS.TASKS.PUBLIC);
         
         if (!response.ok) {
           throw new Error('Failed to fetch tasks');
@@ -290,7 +291,7 @@ export const PublicTasks = () => {
           showToast('Task claimed successfully on blockchain!', 'success');
           
           // Also update backend
-          const backendResponse = await fetch(`http://localhost:5000/api/tasks/${task.id}/claim`, {
+          const backendResponse = await fetch(API_ENDPOINTS.TASKS.CLAIM(task.id), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -312,7 +313,7 @@ export const PublicTasks = () => {
           }
 
           // Refresh tasks
-          const response = await fetch('http://localhost:5000/api/tasks/public');
+          const response = await fetch(API_ENDPOINTS.TASKS.PUBLIC);
           if (response.ok) {
             const data = await response.json();
             setTasks(data);
@@ -323,7 +324,7 @@ export const PublicTasks = () => {
         }
       } else {
         // Claim via API only
-        const response = await fetch(`http://localhost:5000/api/tasks/${task.id}/claim`, {
+        const response = await fetch(API_ENDPOINTS.TASKS.CLAIM(task.id), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -348,7 +349,7 @@ export const PublicTasks = () => {
         showToast('Task claimed successfully!', 'success');
         
         // Refresh tasks
-        const response2 = await fetch('http://localhost:5000/api/tasks/public');
+        const response2 = await fetch(API_ENDPOINTS.TASKS.PUBLIC);
         if (response2.ok) {
           const data = await response2.json();
           setTasks(data);
@@ -390,7 +391,7 @@ export const PublicTasks = () => {
           showToast(message, 'success');
           
           // Also update backend
-          const backendResponse = await fetch(`http://localhost:5000/api/tasks/${task.id}/complete`, {
+          const backendResponse = await fetch(API_ENDPOINTS.TASKS.COMPLETE(task.id), {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -413,7 +414,7 @@ export const PublicTasks = () => {
           }
 
           // Refresh tasks
-          const response = await fetch('http://localhost:5000/api/tasks/public');
+          const response = await fetch(API_ENDPOINTS.TASKS.PUBLIC);
           if (response.ok) {
             const data = await response.json();
             setTasks(data);
@@ -424,7 +425,7 @@ export const PublicTasks = () => {
         }
       } else {
         // Complete via API only
-        const response = await fetch(`http://localhost:5000/api/tasks/${task.id}/complete`, {
+        const response = await fetch(API_ENDPOINTS.TASKS.COMPLETE(task.id), {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -449,7 +450,7 @@ export const PublicTasks = () => {
         showToast('Task completed successfully!', 'success');
         
         // Refresh tasks
-        const response2 = await fetch('http://localhost:5000/api/tasks/public');
+        const response2 = await fetch(API_ENDPOINTS.TASKS.PUBLIC);
         if (response2.ok) {
           const data = await response2.json();
           setTasks(data);

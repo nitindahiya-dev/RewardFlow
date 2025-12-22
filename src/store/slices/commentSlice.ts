@@ -1,5 +1,6 @@
 // src/store/slices/commentSlice.ts
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { API_ENDPOINTS } from '../../config/api';
 
 export interface Comment {
   id: string;
@@ -33,7 +34,7 @@ export const fetchComments = createAsyncThunk(
   'comments/fetchComments',
   async (taskId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskId}/comments`);
+      const response = await fetch(API_ENDPOINTS.COMMENTS.BY_TASK(taskId));
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -53,7 +54,7 @@ export const addComment = createAsyncThunk(
   'comments/addComment',
   async (commentData: { taskId: string; content: string; userId: string }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${commentData.taskId}/comments`, {
+      const response = await fetch(API_ENDPOINTS.COMMENTS.BY_TASK(commentData.taskId), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

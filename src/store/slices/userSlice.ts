@@ -1,5 +1,6 @@
 // src/store/slices/userSlice.ts
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { API_ENDPOINTS } from '../../config/api';
 
 export interface UserProfile {
   id: string;
@@ -33,7 +34,7 @@ export const fetchUserProfile = createAsyncThunk(
   async (userId: string, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/profile`, {
+      const response = await fetch(API_ENDPOINTS.USERS.PROFILE(userId), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +74,7 @@ export const updateUserProfile = createAsyncThunk(
   }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/users/${profileData.userId}/profile`, {
+      const response = await fetch(API_ENDPOINTS.USERS.PROFILE(profileData.userId), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

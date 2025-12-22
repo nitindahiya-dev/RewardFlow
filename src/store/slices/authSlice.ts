@@ -1,5 +1,6 @@
 // src/store/slices/authSlice.ts
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { API_ENDPOINTS } from '../../config/api';
 
 export interface User {
   id: string;
@@ -58,7 +59,7 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
@@ -98,7 +99,7 @@ export const verifyMFA = createAsyncThunk(
   'auth/verifyMFA',
   async (payload: { userId: string; code: string }, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/mfa/verify', {
+      const response = await fetch(API_ENDPOINTS.AUTH.MFA_VERIFY, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -5,6 +5,7 @@ import { Button, Input, Card, CardHeader, CardTitle, CardBody, FormGroup, Label,
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { fetchUserProfile, updateUserProfile } from '../store/slices/userSlice';
 import { useToast } from '../components/common/Toast';
+import { API_ENDPOINTS } from '../config/api';
 
 const ProfileContainer = styled(PageContainer)`
   max-width: 600px;
@@ -143,7 +144,7 @@ export const Profile = () => {
     if (!user?.id) return;
     
     try {
-      const response = await fetch('http://localhost:5000/api/auth/mfa/setup', {
+      const response = await fetch(API_ENDPOINTS.AUTH.MFA_SETUP, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ export const Profile = () => {
     setMfaError(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/mfa/verify', {
+      const response = await fetch(API_ENDPOINTS.AUTH.MFA_VERIFY, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -216,7 +217,7 @@ export const Profile = () => {
     if (!code) return;
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/mfa/disable', {
+      const response = await fetch(API_ENDPOINTS.AUTH.MFA_DISABLE, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

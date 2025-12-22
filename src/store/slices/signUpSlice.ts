@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { API_ENDPOINTS } from '../../config/api';
 
 interface User {
     id: string;
@@ -24,7 +25,7 @@ export const SignUpUser = createAsyncThunk(
     'auth/signup',
     async (credentials: { name: string; email: string; password: string; confirmPassword: string }, { rejectWithValue }) => {
         try {
-            const response = await fetch('http://localhost:5000/api/auth/signup', {
+            const response = await fetch(API_ENDPOINTS.AUTH.SIGNUP, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(credentials),

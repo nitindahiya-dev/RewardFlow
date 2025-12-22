@@ -1,5 +1,6 @@
 // src/store/slices/taskSlice.ts
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { API_ENDPOINTS } from '../../config/api';
 
 // Helper function to safely format dates
 const formatDate = (dateString: string | Date | null | undefined): string => {
@@ -63,7 +64,7 @@ export const fetchTasks = createAsyncThunk(
   'tasks/fetchTasks',
   async (userId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks?userId=${userId}`);
+      const response = await fetch(`${API_ENDPOINTS.TASKS.BASE}?userId=${userId}`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -101,7 +102,7 @@ export const createTask = createAsyncThunk(
     blockchainTaskId?: string | null;
   }, { rejectWithValue }) => {
     try {
-      const response = await fetch('http://localhost:5000/api/tasks', {
+      const response = await fetch(API_ENDPOINTS.TASKS.BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskData),
@@ -139,7 +140,7 @@ export const updateTask = createAsyncThunk(
     attachments?: string[];
   }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskData.id}`, {
+      const response = await fetch(API_ENDPOINTS.TASKS.BY_ID(taskData.id), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskData),
@@ -166,7 +167,7 @@ export const deleteTask = createAsyncThunk(
   'tasks/deleteTask',
   async (taskData: { taskId: string; userId: string }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskData.taskId}`, {
+      const response = await fetch(API_ENDPOINTS.TASKS.BY_ID(taskData.taskId), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: taskData.userId }),
@@ -198,7 +199,7 @@ export const searchTasks = createAsyncThunk(
         return [];
       }
 
-      const response = await fetch(`http://localhost:5000/api/tasks/search?q=${encodeURIComponent(searchData.query)}&userId=${searchData.userId}`, {
+      const response = await fetch(`${API_ENDPOINTS.TASKS.SEARCH}?q=${encodeURIComponent(searchData.query)}&userId=${searchData.userId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -229,7 +230,7 @@ export const toggleTaskComplete = createAsyncThunk(
     badgeTokenId?: string | null;
   }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/tasks/${taskData.taskId}/complete`, {
+      const response = await fetch(API_ENDPOINTS.TASKS.COMPLETE(taskData.taskId), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

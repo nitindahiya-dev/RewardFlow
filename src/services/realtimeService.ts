@@ -7,6 +7,7 @@ import {
   deleteTaskFromSocket 
 } from '../store/slices/taskSlice';
 import { addCommentFromSocket } from '../store/slices/commentSlice';
+import { API_BASE_URL } from '../config/api';
 
 class RealtimeService {
   private socket: Socket | null = null;
@@ -17,7 +18,8 @@ class RealtimeService {
       return; // Already connected
     }
 
-    const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    // Use API_BASE_URL from config (already includes VITE_API_URL or fallback)
+    const serverUrl = API_BASE_URL;
     
     this.socket = io(serverUrl, {
       transports: ['websocket', 'polling'],
