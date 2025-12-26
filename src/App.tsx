@@ -47,8 +47,8 @@ const AppContainer = styled.div`
     right: 0;
     bottom: 0;
     background: 
-      radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+      radial-gradient(circle at 20% 50%, rgba(133, 64, 157, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(238, 167, 39, 0.1) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
   }
@@ -66,9 +66,16 @@ const AppContent = styled.div`
 `;
 
 const LogoutButton = styled(Button)`
-  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
   font-size: ${({ theme }) => theme.fontSize.sm};
-  margin-left: ${({ theme }) => theme.spacing.sm};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  font-weight: ${({ theme }) => theme.fontWeight.medium};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(133, 64, 157, 0.3);
+  }
 `;
 
 const AppHeader = () => {
@@ -96,7 +103,7 @@ const AppHeader = () => {
   return (
     <Header>
       <HeaderContent>
-        <Logo to="/">Reward Flow</Logo>
+        <Logo to="/" />
         <ProfileIconContainer>
           {isAuthenticated ? (
             <>

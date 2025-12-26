@@ -1,82 +1,76 @@
 // src/components/common/Header.tsx
+import React from 'react';
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export const Header = styled.header`
   background: linear-gradient(
     135deg,
-    rgba(21, 21, 32, 0.95) 0%,
-    rgba(30, 30, 46, 0.95) 100%
+    rgba(26, 18, 38, 0.98) 0%,
+    rgba(31, 22, 45, 0.98) 100%
   );
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
-  box-shadow: ${({ theme }) => theme.shadows.md};
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(133, 64, 157, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   padding: ${({ theme }) => theme.spacing.md} 0;
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: all 0.3s ease;
 `;
 
 export const HeaderContent = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 ${({ theme }) => theme.spacing.md};
+  padding: 0 ${({ theme }) => theme.spacing.lg};
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: ${({ theme }) => theme.spacing.lg};
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
     padding: 0 ${({ theme }) => theme.spacing.xl};
   }
 `;
 
-export const Logo = styled(Link)`
-  font-size: ${({ theme }) => theme.fontSize.lg};
-  font-weight: ${({ theme }) => theme.fontWeight.bold};
-  background: ${({ theme }) => theme.gradients.primary};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
-  white-space: nowrap;
-
-  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    font-size: ${({ theme }) => theme.fontSize.xxl};
-  }
-
-  &:hover {
-    filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.8));
-    transform: scale(1.05);
-  }
-`;
+// Logo component is now in Logo.tsx
 
 export const Nav = styled.nav`
   display: none;
+  flex: 1;
+  justify-content: center;
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
     display: flex;
     flex-direction: row;
-    gap: ${({ theme }) => theme.spacing.sm};
+    gap: ${({ theme }) => theme.spacing.xs};
   }
 `;
 
-export const NavLink = styled(Link)`
-  color: ${({ theme }) => theme.colors.textLight};
+const StyledNavLink = styled(Link)<{ $isActive?: boolean }>`
+  color: ${({ $isActive, theme }) => 
+    $isActive ? theme.colors.text : theme.colors.textLight};
   text-decoration: none;
-  font-weight: ${({ theme }) => theme.fontWeight.medium};
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-weight: ${({ $isActive, theme }) => 
+    $isActive ? theme.fontWeight.semibold : theme.fontWeight.medium};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   display: block;
   text-align: center;
-  font-size: ${({ theme }) => theme.fontSize.md};
+  font-size: ${({ theme }) => theme.fontSize.sm};
+  background: ${({ $isActive }) => 
+    $isActive ? 'rgba(133, 64, 157, 0.15)' : 'transparent'};
+  border: 1px solid ${({ $isActive }) => 
+    $isActive ? 'rgba(133, 64, 157, 0.3)' : 'transparent'};
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
     text-align: left;
-    padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.md};
+    font-size: ${({ theme }) => theme.fontSize.md};
   }
 
   &::before {
@@ -84,35 +78,70 @@ export const NavLink = styled(Link)`
     position: absolute;
     bottom: 0;
     left: 50%;
-    width: 0;
+    width: ${({ $isActive }) => $isActive ? '60%' : '0'};
     height: 2px;
     background: ${({ theme }) => theme.gradients.primary};
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform: translateX(-50%);
+    border-radius: 2px;
+  }
 
-    @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-      bottom: 0;
-    }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: ${({ theme }) => theme.borderRadius.lg};
+    background: ${({ theme }) => theme.gradients.primary};
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
   }
 
   &:hover {
     color: ${({ theme }) => theme.colors.text};
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(133, 64, 157, 0.1);
+    border-color: rgba(133, 64, 157, 0.2);
+    transform: translateY(-1px);
     
     &::before {
-      width: 80%;
+      width: 60%;
+    }
+    
+    &::after {
+      opacity: 0.05;
     }
   }
+
+  &:active {
+    transform: translateY(0);
+  }
 `;
+
+interface NavLinkProps {
+  to: string;
+  children: React.ReactNode;
+  [key: string]: any;
+}
+
+export const NavLink = ({ to, children, ...props }: NavLinkProps) => {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+  
+  return (
+    <StyledNavLink to={to} $isActive={isActive} {...props}>
+      {children}
+    </StyledNavLink>
+  );
+};
 
 export const ProfileIconContainer = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: ${({ theme }) => theme.spacing.md};
   flex-wrap: wrap;
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    gap: ${({ theme }) => theme.spacing.md};
+    gap: ${({ theme }) => theme.spacing.lg};
     flex-wrap: nowrap;
   }
 `;

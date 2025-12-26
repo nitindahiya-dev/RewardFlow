@@ -12,7 +12,7 @@ export default defineConfig({
         name: 'RewardFlow - Task Management Platform',
         short_name: 'RewardFlow',
         description: 'Modern task management platform with Web3 integration, AI-powered features, and real-time collaboration',
-        theme_color: '#6366f1',
+        theme_color: '#85409D',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',
