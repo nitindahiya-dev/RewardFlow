@@ -256,14 +256,22 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    // Validation - check for missing or empty strings
+    if (!email || typeof email !== 'string' || email.trim() === '') {
+      return res.status(400).json({ error: 'Email is required' });
     }
+    
+    if (!password || typeof password !== 'string' || password.trim() === '') {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+    
+    // Trim whitespace
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: trimmedEmail },
     });
 
     if (!user) {
@@ -276,7 +284,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(trimmedPassword, user.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -583,9 +591,17 @@ app.post('/api/auth/web3-verify', async (req: Request, res: Response) => {
   try {
     const { walletAddress, signature, nonce } = req.body;
 
-    // Validation
-    if (!walletAddress || !signature || !nonce) {
-      return res.status(400).json({ error: 'Wallet address, signature, and nonce are required' });
+    // Validation - check for missing or empty strings
+    if (!walletAddress || typeof walletAddress !== 'string' || walletAddress.trim() === '') {
+      return res.status(400).json({ error: 'Wallet address is required' });
+    }
+    
+    if (!signature || typeof signature !== 'string' || signature.trim() === '') {
+      return res.status(400).json({ error: 'Signature is required' });
+    }
+    
+    if (!nonce || typeof nonce !== 'string' || nonce.trim() === '') {
+      return res.status(400).json({ error: 'Nonce is required' });
     }
 
     // Validate address format
@@ -679,12 +695,34 @@ app.post('/api/auth/web3-verify', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Web3 verify error:', error);
     
-    // Handle unique constraint violation (wallet already exists)
+    // Handle Prisma errors
     if (error.code === 'P2002') {
       return res.status(400).json({ error: 'Wallet address is already linked to another account' });
     }
+    
+    // Handle database connection errors (Supabase tenant issues)
+    if (error.message?.includes('Tenant or user not found') || error.cause?.message?.includes('Tenant or user not found')) {
+      console.error('Database tenant error - this may indicate a Supabase configuration issue');
+      return res.status(500).json({ 
+        error: 'Database connection error. Please check server configuration.',
+        details: 'Tenant or user context not found'
+      });
+    }
+    
+    // Handle other Prisma errors
+    if (error.code && error.code.startsWith('P')) {
+      console.error('Prisma error:', error.code, error.message);
+      return res.status(500).json({ 
+        error: 'Database error occurred',
+        details: error.message 
+      });
+    }
 
-    res.status(500).json({ error: 'Internal server error' });
+    // Generic error response
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
