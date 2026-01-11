@@ -1,7 +1,5 @@
 import { connectWallet, signMessage, WalletType } from '../utils/wallet';
-import { API_BASE_URL } from '../config/api';
-
-const API_BASE_URL_WITH_PATH = `${API_BASE_URL}/api`;
+import { API_ENDPOINTS } from '../config/api';
 
 interface NonceResponse {
   nonce: string;
@@ -22,7 +20,7 @@ interface Web3VerifyResponse {
  * Request a nonce from the backend for authentication
  */
 export const requestNonce = async (walletAddress: string): Promise<string> => {
-  const response = await fetch(`${API_BASE_URL_WITH_PATH}/auth/web3-nonce`, {
+  const response = await fetch(API_ENDPOINTS.AUTH.WEB3_NONCE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ walletAddress }),
@@ -45,7 +43,7 @@ export const verifyWeb3Auth = async (
   signature: string,
   nonce: string
 ): Promise<Web3VerifyResponse> => {
-  const response = await fetch(`${API_BASE_URL_WITH_PATH}/auth/web3-verify`, {
+  const response = await fetch(API_ENDPOINTS.AUTH.WEB3_VERIFY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ walletAddress, signature, nonce }),
