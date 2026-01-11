@@ -6,7 +6,7 @@ export { TimePicker } from './TimePicker';
 export { Card, CardHeader, CardTitle, CardBody } from './Card';
 export { Container, PageContainer } from './Container';
 export { FormGroup, Label, ErrorMessage } from './FormGroup';
-export { Header, HeaderContent, Nav, NavLink, ProfileIconContainer } from './Header';
+export { Header, HeaderContent, HeaderLeft, Nav, NavLink, ProfileIconContainer, GitHubLink } from './Header';
 export { Logo } from './Logo';
 export { BottomNav } from './BottomNav';
 export { ProfileIcon } from './ProfileIcon';
@@ -51,6 +51,7 @@ export {
   BottomNavHomeIcon,
   BottomNavLoginIcon,
   BottomNavSignUpIcon,
+  GitHubIcon,
 } from './Icons';
 export { ToastProvider, useToast } from './Toast';
 export { ConnectWallet } from './ConnectWallet';
