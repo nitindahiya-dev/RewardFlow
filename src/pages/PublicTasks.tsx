@@ -258,12 +258,43 @@ export const PublicTasks = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
+  const [claimedTasks, setClaimedTasks] = useState<Set<string>>(new Set()); // Track claimed tasks by task ID
   
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  // Fetch public tasks
+  // Check task claim status from blockchain
+  const checkTaskClaimStatus = async (task: PublicTask) => {
+    if (!task.hasWeb3Reward || !task.blockchainTaskId) {
+      // For non-Web3 tasks, check if assignee exists (from backend)
+      // PublicTask doesn't have assignee field, so we'll check blockchain for Web3 tasks
+      return false;
+    }
+
+    try {
+      await contractService.connect();
+      const blockchainTaskId = typeof task.blockchainTaskId === 'string' 
+        ? parseInt(task.blockchainTaskId) 
+        : task.blockchainTaskId;
+      
+      if (isNaN(blockchainTaskId) || blockchainTaskId <= 0) {
+        return false;
+      }
+
+      const blockchainTask = await contractService.getTask(blockchainTaskId);
+      const status = Number(blockchainTask.status);
+      const assignee = blockchainTask.assignee;
+      
+      // Task is claimed if status is Assigned (1) or has an assignee
+      return status === 1 || (assignee && assignee !== ethers.ZeroAddress);
+    } catch (error) {
+      console.warn('Could not check blockchain task status:', error);
+      return false;
+    }
+  };
+
+  // Fetch public tasks and check claim status
   useEffect(() => {
     const fetchPublicTasks = async () => {
       try {
@@ -277,6 +308,16 @@ export const PublicTasks = () => {
         
         const data = await response.json();
         setTasks(data);
+
+        // Check claim status for all tasks
+        const claimedSet = new Set<string>();
+        for (const task of data) {
+          const isClaimed = await checkTaskClaimStatus(task);
+          if (isClaimed) {
+            claimedSet.add(task.id);
+          }
+        }
+        setClaimedTasks(claimedSet);
       } catch (err: any) {
         setError(err.message || 'Failed to load tasks');
         showToast('Failed to load tasks', 'error');
@@ -391,6 +432,9 @@ export const PublicTasks = () => {
           
           showToast('Task claimed successfully on blockchain!', 'success');
           
+          // Mark task as claimed
+          setClaimedTasks(prev => new Set(prev).add(task.id));
+          
           // Also update backend
           const backendResponse = await fetch(API_ENDPOINTS.TASKS.CLAIM(task.id), {
             method: 'POST',
@@ -418,6 +462,15 @@ export const PublicTasks = () => {
           if (response.ok) {
             const data = await response.json();
             setTasks(data);
+            // Update claimed status
+            const claimedSet = new Set<string>();
+            for (const t of data) {
+              const isClaimed = await checkTaskClaimStatus(t);
+              if (isClaimed) {
+                claimedSet.add(t.id);
+              }
+            }
+            setClaimedTasks(claimedSet);
           }
         } catch (contractError: any) {
           console.error('Contract claim error:', contractError);
@@ -708,9 +761,13 @@ export const PublicTasks = () => {
                     <Button
                       variant="outline"
                       onClick={() => handleClaimTask(task)}
-                      disabled={claimingTaskId === task.id}
+                      disabled={claimingTaskId === task.id || claimedTasks.has(task.id)}
                     >
-                      {claimingTaskId === task.id ? 'Claiming...' : 'Claim Task'}
+                      {claimingTaskId === task.id 
+                        ? 'Claiming...' 
+                        : claimedTasks.has(task.id) 
+                        ? 'Task Claimed' 
+                        : 'Claim Task'}
                     </Button>
                     <Button
                       variant="secondary"
