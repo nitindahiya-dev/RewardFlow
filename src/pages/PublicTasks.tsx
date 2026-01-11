@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { ethers } from 'ethers';
 import {
   PageContainer,
   Card,
@@ -353,6 +354,39 @@ export const PublicTasks = () => {
             throw new Error(`Invalid blockchain task ID: ${task.blockchainTaskId}`);
           }
           
+          // First, check task status to provide better feedback
+          try {
+            const taskDetails = await contractService.getTask(blockchainTaskId);
+            // Convert BigInt status to number for comparison
+            const status = Number(taskDetails.status);
+            const statusNames = ['Open', 'Assigned', 'Completed', 'Cancelled'];
+            
+            // Task must be Open (status 0) to be claimable
+            if (status !== 0) {
+              const statusName = statusNames[status] || 'Unknown';
+              showToast(`Cannot claim task: Status is ${statusName}. Only Open tasks can be claimed.`, 'error');
+              return;
+            }
+            
+            // Check if task already has an assignee
+            const assignee = taskDetails.assignee;
+            if (assignee && assignee !== ethers.ZeroAddress) {
+              showToast(`Task is already assigned to ${assignee}. Cannot claim.`, 'error');
+              return;
+            }
+            
+            // Check if deadline has passed
+            const currentTimestamp = Math.floor(Date.now() / 1000);
+            const dueDate = Number(taskDetails.dueDate);
+            if (dueDate && dueDate < currentTimestamp) {
+              showToast(`Task deadline has passed. Cannot claim.`, 'error');
+              return;
+            }
+          } catch (checkError: any) {
+            console.warn('Could not check task status:', checkError);
+            // Continue with claim attempt anyway - the contract will validate
+          }
+          
           const result = await contractService.claimTask(blockchainTaskId);
           
           showToast('Task claimed successfully on blockchain!', 'success');
@@ -455,6 +489,45 @@ export const PublicTasks = () => {
           
           if (isNaN(blockchainTaskId) || blockchainTaskId <= 0) {
             throw new Error(`Invalid blockchain task ID: ${task.blockchainTaskId}`);
+          }
+          
+          // Get current user's wallet address
+          const currentWalletAddress = await contractService.getCurrentAddress();
+          
+          // Fetch task from blockchain to verify assignee and status
+          const blockchainTask = await contractService.getTask(blockchainTaskId);
+          const blockchainAssignee = blockchainTask.assignee;
+          // Convert BigInt status to number for comparison
+          const blockchainStatus = Number(blockchainTask.status);
+          
+          // Check task status (0 = Open, 1 = Assigned, 2 = Completed, 3 = Cancelled)
+          if (blockchainStatus === 0) {
+            showToast('This task is open and has no assignee. Please claim it first before completing.', 'warning');
+            return;
+          }
+          if (blockchainStatus === 2) {
+            showToast('This task has already been completed on the blockchain.', 'info');
+            return;
+          }
+          if (blockchainStatus === 3) {
+            showToast('This task has been cancelled and cannot be completed.', 'error');
+            return;
+          }
+          
+          // Check if task has an assignee
+          if (!blockchainAssignee || blockchainAssignee === ethers.ZeroAddress) {
+            showToast('This task has no assignee on the blockchain. Please claim it first before completing.', 'warning');
+            return;
+          }
+          
+          // Normalize addresses for comparison (case-insensitive)
+          const normalizedAssignee = ethers.getAddress(blockchainAssignee);
+          const normalizedCurrentAddress = ethers.getAddress(currentWalletAddress);
+          
+          // Check if current user is the assignee
+          if (normalizedAssignee.toLowerCase() !== normalizedCurrentAddress.toLowerCase()) {
+            showToast(`Only the assignee can complete this task. Task assignee: ${normalizedAssignee}`, 'error');
+            return;
           }
           
           const result = await contractService.completeTask(blockchainTaskId);

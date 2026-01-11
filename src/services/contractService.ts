@@ -189,6 +189,9 @@ export class ContractService {
     try {
       const iface = this.taskManager!.interface;
       const functionFragment = iface.getFunction("createTaskWithETH");
+      if (!functionFragment) {
+        throw new Error("createTaskWithETH function not found in contract ABI");
+      }
       const encodedData = iface.encodeFunctionData(functionFragment, [title, description, assignee, dueDate]);
       console.log('Function encoded successfully. Data length:', encodedData.length);
     } catch (encodeError: any) {
@@ -424,8 +427,50 @@ export class ContractService {
   }
 
   async completeTask(taskId: number | string) {
-    if (!this.taskManager) {
+    if (!this.taskManager || !this.signer) {
       throw new Error("Not connected to wallet");
+    }
+
+    // First, check the task details to provide better error messages
+    try {
+      const task = await this.taskManager.getTask(taskId);
+      const currentAddress = await this.signer.getAddress();
+      
+      // TaskStatus enum: 0 = Open, 1 = Assigned, 2 = Completed, 3 = Cancelled
+      // Convert BigInt status to number for comparison
+      const status = Number(task.status);
+      const assignee = task.assignee;
+      
+      const statusNames = ['Open', 'Assigned', 'Completed', 'Cancelled'];
+      
+      // Task must be Assigned (status 1) to be completed
+      if (status !== 1) {
+        throw new Error(`Task is not in assigned status. Current status: ${statusNames[status] || 'Unknown'}. Only Assigned tasks can be completed.`);
+      }
+      
+      // Normalize addresses for comparison (case-insensitive)
+      const normalizedAssignee = assignee ? ethers.getAddress(assignee) : null;
+      const normalizedCurrentAddress = ethers.getAddress(currentAddress);
+      
+      if (!normalizedAssignee || normalizedAssignee === ethers.ZeroAddress) {
+        throw new Error("Task has no assignee. Please claim the task first before completing.");
+      }
+      
+      if (normalizedAssignee.toLowerCase() !== normalizedCurrentAddress.toLowerCase()) {
+        throw new Error(`Only the assignee can complete this task. Task assignee: ${normalizedAssignee}, Your address: ${normalizedCurrentAddress}`);
+      }
+      
+      // Check if deadline has passed
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      if (task.dueDate && BigInt(task.dueDate) < BigInt(currentTimestamp)) {
+        throw new Error(`Task deadline has passed. Due date: ${new Date(Number(task.dueDate) * 1000).toLocaleString()}`);
+      }
+    } catch (error: any) {
+      // If it's already our custom error, rethrow it
+      if (error.message?.includes('not in assigned') || error.message?.includes('no assignee') || error.message?.includes('Only the assignee') || error.message?.includes('deadline')) {
+        throw error;
+      }
+      // Otherwise, continue to try completing (might be a different error)
     }
 
     const tx = await this.taskManager.completeTask(taskId);
@@ -465,6 +510,41 @@ export class ContractService {
   async claimTask(taskId: number | string) {
     if (!this.taskManager) {
       throw new Error("Not connected to wallet");
+    }
+
+    // First, check the task status to provide better error messages
+    try {
+      const task = await this.taskManager.getTask(taskId);
+      
+      // TaskStatus enum: 0 = Open, 1 = Assigned, 2 = Completed, 3 = Cancelled
+      // Convert BigInt status to number for comparison
+      const status = Number(task.status);
+      const assignee = task.assignee;
+      
+      const statusNames = ['Open', 'Assigned', 'Completed', 'Cancelled'];
+      
+      // Task must be Open (status 0) to be claimable
+      if (status !== 0) {
+        throw new Error(`Task is not open for claiming. Current status: ${statusNames[status] || 'Unknown'}. Only Open tasks can be claimed.`);
+      }
+      
+      // Check if task already has an assignee (should be zero address for open tasks)
+      if (assignee && assignee !== ethers.ZeroAddress) {
+        throw new Error(`Task is already assigned to ${assignee}. Cannot claim.`);
+      }
+      
+      // Check if deadline has passed
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      const dueDate = Number(task.dueDate);
+      if (dueDate && dueDate < currentTimestamp) {
+        throw new Error(`Task deadline has passed. Due date: ${new Date(dueDate * 1000).toLocaleString()}`);
+      }
+    } catch (error: any) {
+      // If it's already our custom error, rethrow it
+      if (error.message?.includes('not open') || error.message?.includes('already assigned') || error.message?.includes('deadline')) {
+        throw error;
+      }
+      // Otherwise, continue to try claiming (might be a different error)
     }
 
     const tx = await this.taskManager.claimTask(taskId);
