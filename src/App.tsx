@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { theme } from './theme/theme';
-import { Header, HeaderContent, Logo, Nav, NavLink, ProfileIconContainer, ProfileIcon, ProtectedRoute, Button, BottomNav, BottomNavTasksIcon, BottomNavMyTasksIcon, BottomNavProfileIcon, BottomNavDetailsIcon, BottomNavHomeIcon, BottomNavLoginIcon, BottomNavSignUpIcon, InstallPrompt } from './components/common';
+import { Header, HeaderContent, Logo, Nav, NavLink, ProfileIconContainer, ProfileIcon, ProtectedRoute, Button, BottomNav, BottomNavTasksIcon, BottomNavMyTasksIcon, BottomNavProfileIcon, BottomNavDetailsIcon, BottomNavHomeIcon, BottomNavLoginIcon, BottomNavSignUpIcon, InstallPrompt, GitHubLink, GitHubIcon } from './components/common';
 import {
   Landing,
   Login,
@@ -112,17 +112,35 @@ const AppHeader = () => {
                 <NavLink to="/my-tasks">My Tasks</NavLink>
                 <NavLink to="/user-details">User Details</NavLink>
               </Nav>
+              <GitHubLink 
+                href="https://github.com/nitindahiya-dev/RewardFlow" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                aria-label="GitHub Repository"
+              >
+                <GitHubIcon size={20} />
+              </GitHubLink>
               <ProfileIcon to="/profile" title="View Profile" avatarUrl={avatarUrl} userName={userName} />
               <LogoutButton variant="outline" onClick={handleLogout}>
                 Logout
               </LogoutButton>
             </>
           ) : (
-            <Nav>
-              <NavLink to="/tasks">Tasks</NavLink>
-              <NavLink to="/login">Login</NavLink>
-              <NavLink to="/signup">Sign Up</NavLink>
-            </Nav>
+            <>
+              <Nav>
+                <NavLink to="/tasks">Tasks</NavLink>
+                <NavLink to="/login">Login</NavLink>
+                <NavLink to="/signup">Sign Up</NavLink>
+              </Nav>
+              <GitHubLink 
+                href="https://github.com/nitindahiya-dev/RewardFlow" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                aria-label="GitHub Repository"
+              >
+                <GitHubIcon size={20} />
+              </GitHubLink>
+            </>
           )}
         </ProfileIconContainer>
       </HeaderContent>

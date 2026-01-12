@@ -36,6 +36,12 @@ export const HeaderContent = styled.div`
   }
 `;
 
+export const HeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.md};
+`;
+
 // Logo component is now in Logo.tsx
 
 export const Nav = styled.nav`
@@ -141,8 +147,50 @@ export const ProfileIconContainer = styled.div`
   flex-wrap: wrap;
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    gap: ${({ theme }) => theme.spacing.lg};
+    // gap: ${({ theme }) => theme.spacing.lg};
     flex-wrap: nowrap;
+  }
+`;
+
+export const GitHubLink = styled.a`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${({ theme }) => theme.colors.textLight};
+  text-decoration: none;
+  padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  border: 1px solid transparent;
+  width: 32px;
+  height: 32px;
+  
+  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    width: 36px;
+    height: 36px;
+    padding: ${({ theme }) => theme.spacing.sm};
+  }
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.text};
+    background: rgba(133, 64, 157, 0.1);
+    border-color: rgba(133, 64, 157, 0.2);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    
+    @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
+      width: 22px;
+      height: 22px;
+    }
   }
 `;
 
